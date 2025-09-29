@@ -1,8 +1,7 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
-import websocket from '@fastify/websocket';
 import { config as loadEnv } from 'dotenv';
-import { fileURLToPath } from 'url';
+import { registerRoutes } from './registerRoutes.js';
 
 loadEnv();
 
@@ -20,9 +19,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     origin: true
   });
 
-  await app.register(websocket);
-
-  app.get('/healthz', async () => ({ status: 'ok' }));
+  await registerRoutes(app);
 
   return app;
 }
@@ -37,13 +34,7 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
   return app;
 }
 
-const isExecutedDirectly = () => {
-  const directCaller = fileURLToPath(import.meta.url);
-  const entryPoint = process.argv[1];
-  return entryPoint ? directCaller === entryPoint : false;
-};
-
-if (isExecutedDirectly()) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   startServer().catch((error) => {
     console.error(error);
     process.exit(1);

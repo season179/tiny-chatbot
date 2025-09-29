@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiny Chatbot Widget - Development</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: #f8fafc;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #1f2937;
+      margin-bottom: 1rem;
+    }
+    p {
+      color: #6b7280;
+      line-height: 1.6;
+    }
+    .note {
+      background: #eff6ff;
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tiny Chatbot Widget Development</h1>
+    <p>This page is used for developing and testing the chatbot widget.</p>
+
+    <div class="note">
+      <strong>🎯 Look for the blue chat button (💬) in the bottom-right corner!</strong>
+      <br>Click it to open the chat interface.
+    </div>
+
+    <p>The widget should automatically mount on page load. If you don't see the chat button, check the browser console for any errors.</p>
+
+    <h2>Widget Features</h2>
+    <ul>
+      <li>Fixed position chat button in bottom-right corner</li>
+      <li>Blue circular design with chat emoji</li>
+      <li>Expandable chat interface on click</li>
+      <li>Collapsible with close button</li>
+    </ul>
+  </div>
+
+  <script type="module" src="/src/index.tsx"></script>
+  <script type="module">
+    // Auto-mount the widget when page loads
+    import { mountWidget } from '/src/index.tsx';
+
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        mountWidget();
+      });
+    } else {
+      mountWidget();
+    }
+  </script>
+</body>
+</html>

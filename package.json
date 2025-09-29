@@ -1,0 +1,18 @@
+{
+  "name": "tiny-chatbot",
+  "private": true,
+  "packageManager": "pnpm@8.15.4",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel --continue",
+    "dev:widget": "pnpm --filter @tiny-chatbot/widget dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@types/node": "^24.5.2",
+    "turbo": "^2.5.8",
+    "typescript": "^5.3.3"
+  }
+}

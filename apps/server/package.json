@@ -1,0 +1,29 @@
+{
+  "name": "@tiny-chatbot/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "module": "dist/server.mjs",
+  "types": "dist/server.d.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm,cjs --out-dir dist",
+    "start": "node dist/server.js",
+    "lint": "biome lint .",
+    "test": "echo 'tests pending'"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/websocket": "^11.2.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsup": "^8.1.0",
+    "tsx": "^4.10.2",
+    "typescript": "^5.3.3"
+  }
+}

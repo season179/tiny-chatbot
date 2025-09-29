@@ -3,14 +3,12 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"],
+      "outputs": ["dist/**"],
       "inputs": [
         "src/**",
-        "app/**",
         "index.html",
         "tsconfig*.json",
         "vite.config.*",
-        "next.config.*",
         "package.json"
       ]
     },

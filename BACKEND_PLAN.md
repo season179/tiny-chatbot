@@ -11,7 +11,7 @@
 - [x] Implement core routes: `GET /healthz`, `POST /api/session`, `POST /api/chat`, `POST /api/chat/stream`, `POST /api/feedback`.
 - [x] Provide an in-memory session store and a conversation service that returns deterministic canned replies.
 - [x] Wire up configuration handling with `dotenv` and validation for runtime settings.
-- [ ] Add Vitest coverage for route validation and the canned-response flow.
+- [x] Add Vitest coverage for route validation and the canned-response flow.
 - [ ] (Optional) Update the widget to call the new API endpoints once the backend is ready.
 
 ## Notes

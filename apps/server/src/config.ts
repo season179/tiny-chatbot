@@ -8,7 +8,10 @@ const configSchema = z.object({
 
   // CORS settings
   CORS_ORIGIN: z.string().default('*'),
-  CORS_CREDENTIALS: z.coerce.boolean().default(false),
+  CORS_CREDENTIALS: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
 
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
@@ -46,4 +49,9 @@ export function getConfig(): Config {
     throw new Error('Configuration has not been loaded. Call loadConfig() first.');
   }
   return cachedConfig;
+}
+
+// For testing purposes only
+export function resetConfig(): void {
+  cachedConfig = null;
 }

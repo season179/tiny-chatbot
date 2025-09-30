@@ -10,7 +10,10 @@
     "build": "tsup",
     "start": "node dist/server.js",
     "lint": "biome lint .",
-    "test": "echo 'tests pending'"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
@@ -21,8 +24,10 @@
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
+    "@vitest/ui": "^3.2.4",
     "tsup": "^8.1.0",
     "tsx": "^4.10.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^3.2.4"
   }
 }

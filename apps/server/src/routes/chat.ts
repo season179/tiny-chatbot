@@ -1,13 +1,7 @@
 import { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { chatRequestSchema } from '@tiny-chatbot/shared';
 import type { ConversationService } from '../services/ConversationService.js';
 import { SessionNotFoundError } from '../services/ConversationService.js';
-
-const chatRequestSchema = z.object({
-  sessionId: z.string().min(1),
-  message: z.string().min(1),
-  metadata: z.record(z.any()).optional()
-});
 
 export async function registerChatRoutes(app: FastifyInstance, conversationService: ConversationService) {
   app.post('/api/chat', async (request, reply) => {

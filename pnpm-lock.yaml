@@ -26,6 +26,9 @@ importers:
       '@fastify/cors':
         specifier: ^9.0.1
         version: 9.0.1
+      '@tiny-chatbot/shared':
+        specifier: workspace:^
+        version: link:../../packages/shared
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -59,6 +62,10 @@ importers:
         version: 3.2.4(@types/node@24.5.2)(@vitest/ui@3.2.4)
 
   packages/shared:
+    dependencies:
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.3.3

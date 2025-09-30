@@ -1,3 +1,4 @@
+// Widget-specific types
 export interface TenantMetadata {
   id: string;
   name: string;
@@ -15,3 +16,21 @@ export interface WidgetMountEvent {
   context: ChatContextPayload;
   timestamp: string;
 }
+
+// API Common types
+export * from './api/common.js';
+
+// API Session types
+export * from './api/session.js';
+
+// API Chat types
+export * from './api/chat.js';
+
+// API Feedback types
+export * from './api/feedback.js';
+
+// API Error types
+export * from './api/errors.js';
+
+// API Client
+export * from './client/api-client.js';

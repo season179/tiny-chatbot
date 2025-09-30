@@ -15,5 +15,6 @@
 - [ ] (Optional) Update the widget to call the new API endpoints once the backend is ready.
 
 ## Notes
-- `packages/shared` should expose the request/response contracts used by both widget and server.
+- ✅ `packages/shared` now exposes all request/response contracts with Zod schemas and a ready-to-use API client.
+- ✅ Server routes use shared types for validation, ensuring type safety between frontend and backend.
 - Keep the code structured so swapping the canned responses for a real LLM call only requires touching the conversation service layer.

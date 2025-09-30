@@ -1,16 +1,11 @@
 import { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { streamChatRequestSchema } from '@tiny-chatbot/shared';
 import type { ConversationService } from '../services/ConversationService.js';
 import { SessionNotFoundError } from '../services/ConversationService.js';
 
-const streamSchema = z.object({
-  sessionId: z.string().min(1),
-  message: z.string().min(1)
-});
-
 export async function registerStreamRoute(app: FastifyInstance, conversationService: ConversationService) {
   app.post('/api/chat/stream', async (request, reply) => {
-    const parseResult = streamSchema.safeParse(request.body);
+    const parseResult = streamChatRequestSchema.safeParse(request.body);
 
     if (!parseResult.success) {
       return reply.status(400).send({

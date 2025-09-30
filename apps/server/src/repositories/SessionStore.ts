@@ -1,20 +1,6 @@
-export type ChatRole = 'system' | 'user' | 'assistant';
+import type { ChatRole, ChatMessage, ChatSession } from '@tiny-chatbot/shared';
 
-export interface ChatMessage {
-  id: string;
-  role: ChatRole;
-  content: string;
-  createdAt: string;
-}
-
-export interface ChatSession {
-  id: string;
-  tenantId: string;
-  userId?: string;
-  traits?: Record<string, unknown>;
-  createdAt: string;
-  messages: ChatMessage[];
-}
+export type { ChatRole, ChatMessage, ChatSession };
 
 export interface CreateSessionInput {
   tenantId: string;

@@ -3,9 +3,10 @@ import cors from '@fastify/cors';
 import { config as loadEnv } from 'dotenv';
 import { loadConfig, getConfig } from './config.js';
 import { registerRoutes } from './registerRoutes.js';
-import { InMemorySessionStore } from './repositories/InMemorySessionStore.js';
+import { SqliteSessionStore } from './repositories/SqliteSessionStore.js';
 import { ConversationService } from './services/ConversationService.js';
 import { OpenAIService } from './services/OpenAIService.js';
+import { initDatabase, closeDatabase } from './db/index.js';
 
 loadEnv();
 loadConfig();
@@ -18,6 +19,12 @@ export interface ServerOptions {
 export async function buildServer(): Promise<FastifyInstance> {
   const config = getConfig();
 
+  // Initialize database
+  initDatabase({
+    path: config.DATABASE_PATH,
+    runMigrations: false // Migrations should be run separately via db:migrate
+  });
+
   const app = Fastify({
     logger: {
       level: config.LOG_LEVEL
@@ -29,11 +36,16 @@ export async function buildServer(): Promise<FastifyInstance> {
     credentials: config.CORS_CREDENTIALS
   });
 
-  const sessionStore = new InMemorySessionStore();
+  const sessionStore = new SqliteSessionStore();
   const openAIService = new OpenAIService(config);
   const conversationService = new ConversationService(sessionStore, openAIService);
 
   await registerRoutes(app, { sessionStore, conversationService });
+
+  // Handle graceful shutdown
+  app.addHook('onClose', async () => {
+    closeDatabase();
+  });
 
   return app;
 }

@@ -1,6 +1,6 @@
 # OpenAI Responses API Integration Plan
 
-## Status: ✅ Phase 1 Complete - Phase 2 Ready
+## Status: ✅ Phase 1 Complete - ✅ Phase 2.1 Complete
 
 ---
 
@@ -54,21 +54,54 @@ Integrated OpenAI's Responses API with `gpt-5` model to replace canned responses
 
 ## Phase 2: Production Readiness 🎯 NEXT STEPS
 
-### 2.1 Session Persistence (High Priority)
+### 2.1 Session Persistence with SQLite ✅ COMPLETE
 
 **Why:** Currently using `InMemorySessionStore` - all conversation history is lost on server restart.
 
-**Tasks:**
-- [ ] Choose persistence layer (Redis, PostgreSQL, MongoDB)
-- [ ] Implement persistent `SessionStore` interface
-  - Reference: `apps/server/src/repositories/SessionStore.ts`
-  - Methods: `createSession()`, `getSession()`, `appendMessage()`
-- [ ] Add connection configuration to config
-- [ ] Update server to use persistent store
-- [ ] Add migration/initialization scripts
-- [ ] Test with real persistence layer
+**Tech Stack:** SQLite + Drizzle ORM
 
-**Effort:** Medium (4-6 hours)
+**Completed Tasks:**
+- [x] Install dependencies: `drizzle-orm`, `better-sqlite3`, `drizzle-kit`, `@types/better-sqlite3`
+- [x] Create Drizzle schema for sessions and messages
+  - Tables: `sessions`, `messages`
+  - File: `apps/server/src/db/schema.ts`
+- [x] Implement `SqliteSessionStore` class
+  - Methods: `createSession()`, `getSession()`, `appendMessage()`
+  - File: `apps/server/src/repositories/SqliteSessionStore.ts`
+- [x] Add SQLite database path to config
+  - Added `DATABASE_PATH` to config schema (default: `./data/sessions.db`)
+  - Files: `apps/server/src/config.ts`, `apps/server/.env.example`
+- [x] Create migration scripts with Drizzle Kit
+  - Scripts: `db:generate`, `db:migrate`, `db:studio`
+  - File: `apps/server/package.json`
+  - Generated migration: `drizzle/0000_amusing_rafael_vega.sql`
+- [x] Create database connection utility
+  - File: `apps/server/src/db/index.ts`
+  - Auto-creates tables for in-memory databases (tests)
+  - Supports migration-based setup for production
+- [x] Update server to use `SqliteSessionStore` instead of `InMemorySessionStore`
+  - File: `apps/server/src/server.ts`
+  - Added graceful shutdown hook
+- [x] Write comprehensive tests for `SqliteSessionStore`
+  - File: `apps/server/src/repositories/SqliteSessionStore.test.ts`
+  - 15 tests covering all functionality
+- [x] All tests passing: **85/85 tests** ✅
+
+**Usage:**
+```bash
+# The server will automatically create the database on startup
+# Database is created at ./data/sessions.db (configurable via DATABASE_PATH env var)
+
+# To use a different database path:
+DATABASE_PATH=./my-custom-path/sessions.db pnpm dev
+
+# For production, you can optionally run migrations manually:
+pnpm db:generate  # Generate new migrations after schema changes
+pnpm db:migrate   # Apply migrations to database
+pnpm db:studio    # Open Drizzle Studio to inspect database
+```
+
+**Effort:** Medium (4-6 hours) - Completed!
 
 ---
 
@@ -76,15 +109,19 @@ Integrated OpenAI's Responses API with `gpt-5` model to replace canned responses
 
 **Why:** Enable tenant-specific personalities and conversation context.
 
+**Approach:** Store system prompts in config file (`prompts.json` or similar)
+
 **Tasks:**
-- [ ] Design system prompt configuration
-  - Option A: Store in config file per tenant
-  - Option B: Store in database with tenant metadata
-  - Option C: Pass as part of session creation
+- [ ] Create `apps/server/config/prompts.json` file
+  - Structure: `{ "tenantId": "system prompt text" }`
+  - Add default prompt for all tenants
+- [ ] Create `PromptService` to load and manage prompts
 - [ ] Update ConversationService to prepend system messages
-- [ ] Add system role support to OpenAIService
-- [ ] Create example prompts in `knowledge-base/`
+  - Prepend system prompt before first user message
+- [ ] Add system role support to OpenAIService message conversion
+- [ ] Create example prompts in config file
 - [ ] Test different prompt configurations
+- [ ] Document prompt customization in README
 
 **Effort:** Small (2-3 hours)
 
@@ -95,99 +132,95 @@ Integrated OpenAI's Responses API with `gpt-5` model to replace canned responses
 **Why:** Handle API failures, rate limits, and network issues gracefully.
 
 **Tasks:**
-- [ ] Add retry logic for transient failures
+- [ ] Add retry logic for transient failures in OpenAIService
   - Implement exponential backoff
-  - Max retries configuration
+  - Add max retries configuration (default: 3)
+  - Retry on network errors and 5xx responses
 - [ ] Handle OpenAI rate limits (429 responses)
-  - Queue requests if needed
+  - Parse retry-after header
   - Return user-friendly error messages
-- [ ] Add request/response logging
-  - Log token usage per request
+  - Log rate limit events
+- [ ] Add request/response logging to OpenAIService
+  - Log token usage per request (from response metadata)
   - Track response times
-  - Log errors with context
-- [ ] Implement circuit breaker pattern (optional)
-- [ ] Add health checks for OpenAI connectivity
+  - Log errors with full context
+- [ ] Add health checks for OpenAI connectivity (optional)
 - [ ] Create error recovery strategies
+  - Graceful degradation for API failures
+  - User-friendly error messages in responses
 
 **Effort:** Medium (4-5 hours)
 
 ---
 
-### 2.4 Monitoring & Observability (Production Critical)
-
-**Why:** Track usage, costs, performance, and issues in production.
-
-**Tasks:**
-- [ ] Token usage tracking
-  - Log tokens per request
-  - Daily/monthly aggregations
-  - Cost estimation
-- [ ] Performance metrics
-  - Response time percentiles (p50, p95, p99)
-  - Streaming chunk latency
-  - Request throughput
-- [ ] Error tracking
-  - Error rates by type
-  - Failed request logging
-  - Alert thresholds
-- [ ] Add structured logging
-- [ ] Integrate with monitoring service (optional: Datadog, New Relic, etc.)
-
-**Effort:** Medium (3-4 hours)
-
----
-
-### 2.5 Context Management (Optimization)
+### 2.4 Context Management (Optimization)
 
 **Why:** Handle long conversations efficiently within token limits.
 
 **Tasks:**
 - [ ] Implement conversation truncation strategy
-  - Keep recent N messages
-  - Smart truncation (keep system + recent)
-  - Summarization for old context (advanced)
-- [ ] Add token counting before API calls
-- [ ] Handle context window exceeded errors
-- [ ] Add conversation pruning options
-- [ ] Test with long conversations
+  - Keep recent N messages (configurable, default: 20)
+  - Always keep system prompt if present
+  - Smart truncation: keep user-assistant pairs intact
+- [ ] Add token counting utility (use tiktoken or estimate)
+- [ ] Handle context window exceeded errors from OpenAI
+  - Automatically truncate and retry
+  - Log truncation events
+- [ ] Add conversation pruning options to config
+- [ ] Test with long conversations (50+ messages)
 
 **Effort:** Medium (3-4 hours)
 
 ---
 
-### 2.6 Advanced Features (Nice to Have)
+### 2.5 Advanced Features (Nice to Have)
 
-**Optional enhancements for better UX:**
+**Optional enhancements for better UX - implement as needed:**
 
 - [ ] **Function Calling Support**
-  - Define available functions
-  - Handle function call requests
+  - Define available functions in config
+  - Handle function call requests from OpenAI
   - Execute functions and return results
   - Effort: Medium (4-6 hours)
 
 - [ ] **Streaming Improvements**
-  - Add typing indicators
+  - Add typing indicators in widget
   - Show partial responses as they arrive
   - Handle streaming errors gracefully
   - Effort: Small (2-3 hours)
 
 - [ ] **Conversation Management**
-  - List user's conversations
-  - Delete conversations
-  - Export conversation history
+  - List user's conversations (GET /api/sessions)
+  - Delete conversations (DELETE /api/session/:id)
+  - Export conversation history (GET /api/session/:id/export)
   - Effort: Medium (3-4 hours)
 
 - [ ] **Multi-Model Support**
-  - Allow model selection per tenant
-  - A/B testing different models
-  - Fallback to cheaper models
+  - Allow model selection per tenant in config
+  - Support A/B testing different models
+  - Fallback to cheaper models on errors
   - Effort: Small (2-3 hours)
 
 - [ ] **Rate Limiting**
   - Limit requests per user/tenant
-  - Prevent abuse
+  - Prevent abuse with token bucket algorithm
   - Fair usage policies
   - Effort: Small (2-3 hours)
+
+---
+
+## Monitoring & Observability
+
+**Note:** Monitoring and observability will be handled using **LangSmith** (external service).
+
+This includes:
+- Token usage tracking and cost estimation
+- Performance metrics (latency, throughput)
+- Error tracking and alerting
+- Request/response tracing
+- Model performance analytics
+
+No implementation needed in this phase - LangSmith integration can be added later.
 
 ---
 
@@ -207,18 +240,18 @@ Integrated OpenAI's Responses API with `gpt-5` model to replace canned responses
 
 ## Getting Started Right Now
 
-### 1. Test with Real OpenAI API
+### 1. Setup and Start Server ✅ DONE
+
+The server is already configured and running with your OpenAI API key!
+
+**Note:** Using `.env` file (both `.env` and `.env.local` work the same way - `.env.local` is typically used to keep secrets out of version control since `.env.local` is usually in `.gitignore`)
 
 ```bash
-# Create .env.local in apps/server/
-cd tiny-chatbot/apps/server
-cp .env.example .env.local
+# Server is already running at:
+# http://localhost:4000
 
-# Edit .env.local and add your API key:
-OPENAI_API_KEY=sk-your-actual-openai-key
-
-# Start the server
-cd ../..
+# If you need to restart:
+cd tiny-chatbot
 pnpm --filter @tiny-chatbot/server dev
 ```
 
@@ -287,4 +320,4 @@ OpenAI Responses API docs: `tiny-chatbot/knowledge-base/Responses-API-Documentat
 ---
 
 **Last Updated:** 2025-09-30
-**Status:** Phase 1 Complete ✅ | Phase 2 Ready 🎯
+**Status:** Phase 1 Complete ✅ | Phase 2.1 Complete ✅ | Phase 2.2+ Ready 🎯

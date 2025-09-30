@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 
 # Turborepo
 .turbo/
+
+# Sqlite
+apps/server/data/

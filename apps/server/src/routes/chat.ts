@@ -1,5 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import type { ConversationService } from '../services/ConversationService.js';
+import { SessionNotFoundError } from '../services/ConversationService.js';
 
 const chatRequestSchema = z.object({
   sessionId: z.string().min(1),
@@ -7,10 +9,7 @@ const chatRequestSchema = z.object({
   metadata: z.record(z.any()).optional()
 });
 
-const cannedAssistantReply = (message: string) =>
-  `Thanks for sharing: "${message}". I am a placeholder assistant response.`;
-
-export async function registerChatRoutes(app: FastifyInstance) {
+export async function registerChatRoutes(app: FastifyInstance, conversationService: ConversationService) {
   app.post('/api/chat', async (request, reply) => {
     const parseResult = chatRequestSchema.safeParse(request.body);
 
@@ -21,18 +20,23 @@ export async function registerChatRoutes(app: FastifyInstance) {
       });
     }
 
-    const { sessionId, message } = parseResult.data;
+    try {
+      const { assistantMessage, sessionId } = conversationService.handleUserMessage({
+        sessionId: parseResult.data.sessionId,
+        message: parseResult.data.message
+      });
 
-    const assistantMessage = cannedAssistantReply(message);
-
-    return reply.send({
-      sessionId,
-      message: {
-        id: `${sessionId}-response-${Date.now()}`,
-        role: 'assistant',
-        content: assistantMessage,
-        createdAt: new Date().toISOString()
+      return reply.send({
+        sessionId,
+        message: assistantMessage
+      });
+    } catch (error) {
+      if (error instanceof SessionNotFoundError) {
+        return reply.status(404).send({ error: 'SESSION_NOT_FOUND' });
       }
-    });
+
+      app.log.error({ err: error }, 'Failed to handle chat message');
+      return reply.status(500).send({ error: 'INTERNAL_SERVER_ERROR' });
+    }
   });
 }

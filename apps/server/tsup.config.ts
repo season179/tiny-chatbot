@@ -5,7 +5,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   target: 'node18',
-  format: ['esm', 'cjs'],
+  format: ['esm'],
   dts: true,
   splitting: false,
   minify: false

@@ -4,11 +4,10 @@
   "private": true,
   "type": "module",
   "main": "dist/server.js",
-  "module": "dist/server.mjs",
   "types": "dist/server.d.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm,cjs --out-dir dist",
+    "build": "tsup",
     "start": "node dist/server.js",
     "lint": "biome lint .",
     "test": "echo 'tests pending'"
@@ -17,6 +16,7 @@
     "@fastify/cors": "^9.0.1",
     "dotenv": "^16.4.5",
     "fastify": "^4.27.2",
+    "nanoid": "^5.1.6",
     "zod": "^3.23.8"
   },
   "devDependencies": {

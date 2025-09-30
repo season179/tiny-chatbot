@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { randomUUID } from 'node:crypto';
+import type { SessionStore } from '../repositories/SessionStore.js';
 
 const createSessionSchema = z.object({
   tenantId: z.string().min(1),
@@ -8,7 +8,7 @@ const createSessionSchema = z.object({
   traits: z.record(z.any()).optional()
 });
 
-export async function registerSessionRoutes(app: FastifyInstance) {
+export async function registerSessionRoutes(app: FastifyInstance, sessionStore: SessionStore) {
   app.post('/api/session', async (request, reply) => {
     const parseResult = createSessionSchema.safeParse(request.body);
 
@@ -19,12 +19,13 @@ export async function registerSessionRoutes(app: FastifyInstance) {
       });
     }
 
-    const sessionId = randomUUID();
+    const session = sessionStore.createSession(parseResult.data);
 
     return reply.status(201).send({
-      sessionId,
-      tenantId: parseResult.data.tenantId,
-      createdAt: new Date().toISOString()
+      sessionId: session.id,
+      tenantId: session.tenantId,
+      userId: session.userId,
+      createdAt: session.createdAt
     });
   });
 }

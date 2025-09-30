@@ -1,6 +1,6 @@
 # OpenAI Responses API Integration Plan
 
-## Status: ✅ Phase 1 Complete - ✅ Phase 2.1 Complete
+## Status: ✅ Phase 1 Complete - ✅ Phase 2.1 Complete - ✅ Phase 2.2 Complete
 
 ---
 
@@ -105,25 +105,62 @@ pnpm db:studio    # Open Drizzle Studio to inspect database
 
 ---
 
-### 2.2 System Instructions & Prompts (Recommended)
+### 2.2 System Instructions & Prompts ✅ COMPLETE
 
 **Why:** Enable tenant-specific personalities and conversation context.
 
-**Approach:** Store system prompts in config file (`prompts.json` or similar)
+**Approach:** Store system prompts in config file (`prompts.json`)
 
-**Tasks:**
-- [ ] Create `apps/server/config/prompts.json` file
-  - Structure: `{ "tenantId": "system prompt text" }`
-  - Add default prompt for all tenants
-- [ ] Create `PromptService` to load and manage prompts
-- [ ] Update ConversationService to prepend system messages
-  - Prepend system prompt before first user message
-- [ ] Add system role support to OpenAIService message conversion
-- [ ] Create example prompts in config file
-- [ ] Test different prompt configurations
-- [ ] Document prompt customization in README
+**Completed Tasks:**
+- [x] Create `apps/server/config/prompts.json` file
+  - Structure: `{ "_default": "...", "tenant-id": "..." }`
+  - Added default prompt and example tenant-specific prompts
+  - File: `apps/server/config/prompts.json`
+- [x] Create `PromptService` to load and manage prompts
+  - Methods: `getPromptForTenant()`, `getDefaultPrompt()`, `hasTenantPrompt()`, `getTenantIds()`
+  - Singleton pattern for easy access
+  - Graceful error handling for missing config
+  - File: `apps/server/src/services/PromptService.ts`
+- [x] Update ConversationService to prepend system messages
+  - Added `prependSystemPrompt()` method
+  - System prompts are not persisted (only added for API calls)
+  - Optional PromptService parameter for backward compatibility
+  - File: `apps/server/src/services/ConversationService.ts`
+- [x] Add system role support to OpenAIService message conversion
+  - Updated `convertMessagesToOpenAIFormat()` to handle 'system' role
+  - File: `apps/server/src/services/OpenAIService.ts`
+- [x] Wire PromptService into server
+  - Added to `buildServer()` with graceful fallback
+  - Logs initialization status
+  - File: `apps/server/src/server.ts`
+- [x] Comprehensive testing
+  - Created 19 tests for PromptService
+  - All existing tests continue to pass
+  - **Result: 104/104 tests passing** ✅
+  - File: `apps/server/src/services/PromptService.test.ts`
 
-**Effort:** Small (2-3 hours)
+**Usage:**
+```bash
+# System prompts are automatically loaded from config/prompts.json
+# Each tenant can have a custom prompt, or use the default
+
+# The prompts.json structure:
+{
+  "_default": "Default system prompt for all tenants",
+  "tenant-id": "Custom prompt for specific tenant"
+}
+
+# Prompts are prepended to conversation history before sending to OpenAI
+# They are NOT persisted in the database
+```
+
+**Example Prompts:**
+- `_default`: Helpful, friendly AI assistant
+- `demo-tenant`: Enthusiastic demo application assistant
+- `support-tenant`: Patient technical support specialist
+- `sales-tenant`: Professional sales consultant
+
+**Effort:** Small (2-3 hours) - Completed!
 
 ---
 
@@ -320,4 +357,4 @@ OpenAI Responses API docs: `tiny-chatbot/knowledge-base/Responses-API-Documentat
 ---
 
 **Last Updated:** 2025-09-30
-**Status:** Phase 1 Complete ✅ | Phase 2.1 Complete ✅ | Phase 2.2+ Ready 🎯
+**Status:** Phase 1 Complete ✅ | Phase 2.1 Complete ✅ | Phase 2.2 Complete ✅ | Phase 2.3+ Ready 🎯

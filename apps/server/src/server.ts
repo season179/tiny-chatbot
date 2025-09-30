@@ -6,6 +6,7 @@ import { registerRoutes } from './registerRoutes.js';
 import { SqliteSessionStore } from './repositories/SqliteSessionStore.js';
 import { ConversationService } from './services/ConversationService.js';
 import { OpenAIService } from './services/OpenAIService.js';
+import { PromptService } from './services/PromptService.js';
 import { initDatabase, closeDatabase } from './db/index.js';
 
 loadEnv();
@@ -38,7 +39,17 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   const sessionStore = new SqliteSessionStore();
   const openAIService = new OpenAIService(config);
-  const conversationService = new ConversationService(sessionStore, openAIService);
+
+  // Initialize PromptService (optional - gracefully handles missing config file)
+  let promptService: PromptService | undefined;
+  try {
+    promptService = new PromptService();
+    app.log.info('PromptService initialized with custom prompts');
+  } catch (error) {
+    app.log.warn('PromptService not initialized - using default behavior without system prompts');
+  }
+
+  const conversationService = new ConversationService(sessionStore, openAIService, promptService);
 
   await registerRoutes(app, { sessionStore, conversationService });
 

@@ -88,10 +88,22 @@ export class OpenAIService {
     role: 'user' | 'assistant' | 'system' | 'developer';
     content: string;
   }> {
-    return messages.map((msg) => ({
-      role: msg.role === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    }));
+    return messages.map((msg) => {
+      // Map our role types to OpenAI's role types
+      let role: 'user' | 'assistant' | 'system';
+      if (msg.role === 'system') {
+        role = 'system';
+      } else if (msg.role === 'user') {
+        role = 'user';
+      } else {
+        role = 'assistant';
+      }
+
+      return {
+        role,
+        content: msg.content
+      };
+    });
   }
 
   private extractTextFromResponse(response: OpenAI.Responses.Response): string {

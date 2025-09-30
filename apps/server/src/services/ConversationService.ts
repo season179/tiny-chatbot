@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import type { ChatMessage, ChatSession, SessionStore } from '../repositories/SessionStore.js';
 import type { OpenAIService, StreamChunk } from './OpenAIService.js';
+import type { PromptService } from './PromptService.js';
 
 export interface HandleMessageInput {
   sessionId: string;
@@ -22,7 +23,8 @@ export class SessionNotFoundError extends Error {
 export class ConversationService {
   constructor(
     private readonly sessionStore: SessionStore,
-    private readonly openAIService: OpenAIService
+    private readonly openAIService: OpenAIService,
+    private readonly promptService?: PromptService
   ) {}
 
   async handleUserMessage(input: HandleMessageInput): Promise<HandleMessageResult> {
@@ -56,7 +58,11 @@ export class ConversationService {
     const userMessage = this.buildMessage('user', input.message);
     const updatedSession = this.sessionStore.appendMessage(session.id, userMessage);
 
-    const generator = this.openAIService.generateStreamingResponse(updatedSession.messages);
+    const messagesWithSystemPrompt = this.prependSystemPrompt(
+      updatedSession.messages,
+      updatedSession.tenantId
+    );
+    const generator = this.openAIService.generateStreamingResponse(messagesWithSystemPrompt);
     let fullText = '';
 
     for await (const chunk of generator) {
@@ -80,7 +86,34 @@ export class ConversationService {
   }
 
   private async buildAssistantMessage(session: ChatSession): Promise<ChatMessage> {
-    const content = await this.openAIService.generateResponse(session.messages);
+    const messagesWithSystemPrompt = this.prependSystemPrompt(session.messages, session.tenantId);
+    const content = await this.openAIService.generateResponse(messagesWithSystemPrompt);
     return this.buildMessage('assistant', content);
+  }
+
+  /**
+   * Prepends a system prompt to the messages array if PromptService is available.
+   * The system prompt is not persisted to the database - it's added only for the API call.
+   */
+  private prependSystemPrompt(messages: ChatMessage[], tenantId: string): ChatMessage[] {
+    if (!this.promptService) {
+      return messages;
+    }
+
+    // Check if there's already a system message at the start
+    const hasSystemMessage = messages.length > 0 && messages[0].role === 'system';
+    if (hasSystemMessage) {
+      return messages;
+    }
+
+    const systemPrompt = this.promptService.getPromptForTenant(tenantId);
+    const systemMessage: ChatMessage = {
+      id: 'system-prompt', // Not persisted, so ID doesn't need to be unique
+      role: 'system',
+      content: systemPrompt,
+      createdAt: new Date().toISOString()
+    };
+
+    return [systemMessage, ...messages];
   }
 }

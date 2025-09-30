@@ -35,17 +35,30 @@ Implementation plan for giving the tiny-chatbot backend limited agentic capabili
 - Update widget rendering (if enabled) to ignore or display tool messages appropriately; preserve backwards compatibility when tool role absent.
 - _Done — Widget now uses streaming API (`useChat.ts` updated to use `client.streamMessage()`), MessageList filters out tool messages and `__FUNCTION_CALLS__` markers, all 141 server tests passing._
 
-## 6. Security & Compliance
-- Enforce sandbox via config (no arbitrary command chaining, capped runtime/output size, path allowlist).
-- Add rate limiting or cooldown if needed to prevent command spam.
-- Document operational playbook for extending the tool list safely.
+## 6. Security & Compliance ⚠️
+- ✅ Sandbox enforced via config (path allowlist, output caps, timeouts in `toolsConfig.ts`)
+- ✅ Operational documentation created (`ENV_CONFIGURATION.md`)
+- ❌ Rate limiting not implemented (future enhancement)
+- ❌ Command spam prevention not implemented (future enhancement)
 
-## 7. Testing & QA
-- Unit tests: ShellToolService, OpenAI tool parsing, Conversation loop logic, config validation.
-- Integration tests: end-to-end flow with fake tool responses, ensure final assistant answer includes tool-derived context.
-- Load/latency check for repeated search commands on medium corpora.
+## 7. Testing & QA ✅
+- ✅ Unit tests: ShellToolService (62 tests), OpenAI tool parsing, Conversation loop, config validation
+- ✅ Integration tests: End-to-end agentic loop with real tool execution (`ConversationService.integration.test.ts` - 7 tests)
+  - Single tool calls (cat, ls, grep)
+  - Multiple sequential tool rounds
+  - Multiple parallel tool calls
+  - Error handling (non-existent files)
+  - Max rounds exceeded protection
+- ✅ Performance tests: Load/latency benchmarks (`ShellToolService.perf.test.ts` - 12 tests)
+  - Command latency measurements (ls, cat, grep, rg, head, tail)
+  - Large output handling
+  - Concurrent execution benchmarks
+  - Ripgrep performance validation
+- ✅ All 15 test files passing (153 total tests)
 
-## 8. Rollout Checklist
-- Update docs (`knowledge-base/`, READMEs) with new capabilities and safety notes.
-- Provide migration guidance for existing sessions (if schema changes require it).
-- Enable feature flag / gradual rollout if desired.
+## 8. Rollout Checklist ⚠️
+- ✅ Environment configuration documented (`ENV_CONFIGURATION.md`)
+- ✅ Security best practices documented
+- ❌ Main README not updated with agentic capabilities
+- ❌ Migration guidance not provided (schema is backwards compatible, no migration needed)
+- ❌ Feature flag not implemented (agentic behavior always enabled when tools configured)

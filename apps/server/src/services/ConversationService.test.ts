@@ -19,9 +19,9 @@ describe('ConversationService', () => {
       }),
       generateStreamingResponse: vi.fn().mockImplementation(async function* (): AsyncGenerator<{ delta: string }, string, undefined> {
         yield { delta: 'Mocked ' };
-        yield { delta: 'streaming ' };
+        yield { delta: 'OpenAI ' };
         yield { delta: 'response' };
-        return 'Mocked streaming response';
+        return 'Mocked OpenAI response';
       })
     } as unknown as OpenAIService;
 

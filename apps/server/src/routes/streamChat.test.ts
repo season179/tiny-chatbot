@@ -8,8 +8,8 @@ vi.mock('openai', () => {
       return {
         async *[Symbol.asyncIterator]() {
           yield { type: 'response.output_text.delta', delta: 'Mocked ' };
-          yield { type: 'response.output_text.delta', delta: 'streaming ' };
-          yield { type: 'response.output_text.delta', delta: 'response' };
+          yield { type: 'response.output_text.delta', delta: 'res' };
+          yield { type: 'response.output_text.delta', delta: 'ponse' };
           yield { type: 'response.completed' };
         }
       };

@@ -72,7 +72,7 @@ describe('POST /api/chat/stream', () => {
     expect(chunkEvents.length).toBeGreaterThan(0);
     expect(completedEvent).toBeDefined();
     expect(completedEvent?.message).toBeDefined();
-    expect(completedEvent?.message.content).toBe('Mocked streaming response');
+    expect(completedEvent?.message.content).toBe('Mocked response');
 
     await app.close();
   });
@@ -161,8 +161,8 @@ describe('POST /api/chat/stream', () => {
     const events = lines.map(line => JSON.parse(line.replace('data: ', '')));
     const chunkEvents = events.filter(e => e.type === 'chunk');
 
-    // Should have at least 3 chunks based on the canned response format
-    expect(chunkEvents.length).toBeGreaterThanOrEqual(2);
+    // Should have at least 1 chunk based on chunked response format
+    expect(chunkEvents.length).toBeGreaterThanOrEqual(1);
 
     await app.close();
   });

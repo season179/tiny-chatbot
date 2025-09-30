@@ -146,15 +146,12 @@ describe('ConversationService', () => {
         }
       }
 
-      expect(events).toEqual([
-        { delta: 'Mocked ' },
-        { delta: 'streaming ' },
-        { delta: 'response' },
-        { type: 'completed' }
-      ]);
+      // Now uses generateResponse and chunks the response
+      expect(events.length).toBeGreaterThanOrEqual(2); // At least one chunk + completed
+      expect(events[events.length - 1]).toEqual({ type: 'completed' });
     });
 
-    it('should call OpenAI streaming service with conversation history', async () => {
+    it('should call OpenAI service with conversation history', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
       const generator = conversationService.handleUserMessageStreaming({
@@ -168,13 +165,17 @@ describe('ConversationService', () => {
         // consume
       }
 
-      expect(mockOpenAIService.generateStreamingResponse).toHaveBeenCalledWith(
+      // Now uses generateResponse instead of generateStreamingResponse
+      expect(mockOpenAIService.generateResponse).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
             role: 'user',
             content: 'Hello'
           })
-        ])
+        ]),
+        expect.objectContaining({
+          tools: undefined
+        })
       );
     });
 
@@ -197,7 +198,7 @@ describe('ConversationService', () => {
       expect(updatedSession?.messages[0].role).toBe('user');
       expect(updatedSession?.messages[0].content).toBe('Hello streaming');
       expect(updatedSession?.messages[1].role).toBe('assistant');
-      expect(updatedSession?.messages[1].content).toBe('Mocked streaming response');
+      expect(updatedSession?.messages[1].content).toBe('Mocked OpenAI response');
     });
 
     it('should accumulate full text from chunks', async () => {
@@ -215,10 +216,10 @@ describe('ConversationService', () => {
         }
       }
 
-      expect(fullText).toBe('Mocked streaming response');
+      expect(fullText).toBe('Mocked OpenAI response');
 
       const updatedSession = sessionStore.getSession(session.id);
-      expect(updatedSession?.messages[1].content).toBe('Mocked streaming response');
+      expect(updatedSession?.messages[1].content).toBe('Mocked OpenAI response');
     });
   });
 

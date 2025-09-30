@@ -125,24 +125,74 @@ export class ConversationService {
     }
 
     const userMessage = this.buildMessage('user', input.message);
-    const updatedSession = this.sessionStore.appendMessage(session.id, userMessage);
+    let currentSession = this.sessionStore.appendMessage(session.id, userMessage);
 
-    const messagesWithSystemPrompt = this.prependSystemPrompt(
-      updatedSession.messages,
-      updatedSession.tenantId
-    );
-    const generator = this.openAIService.generateStreamingResponse(messagesWithSystemPrompt);
-    let fullText = '';
+    // Agentic loop: handle tool calls until we get a final response
+    let roundCount = 0;
+    while (roundCount < this.maxToolRounds) {
+      const messagesWithSystemPrompt = this.prependSystemPrompt(
+        currentSession.messages,
+        currentSession.tenantId
+      );
 
-    for await (const chunk of generator) {
-      fullText += chunk.delta;
-      yield chunk;
+      // Use non-streaming for tool calls to get complete response metadata
+      const response = await this.openAIService.generateResponse(
+        messagesWithSystemPrompt,
+        {
+          tools: this.availableTools
+        }
+      );
+
+      // If no tool calls, stream the final response
+      if (response.finishReason !== 'tool_calls' || !response.toolCalls) {
+        // We already have the content, but stream it for consistency
+        const content = response.content || '';
+
+        // Stream the response character by character (or in chunks)
+        const chunkSize = 50; // Characters per chunk
+        for (let i = 0; i < content.length; i += chunkSize) {
+          const delta = content.slice(i, i + chunkSize);
+          yield { delta };
+        }
+
+        const assistantMessage = this.buildMessage('assistant', content);
+        this.sessionStore.appendMessage(session.id, assistantMessage);
+
+        yield { type: 'completed', assistantMessage };
+        return;
+      }
+
+      // Store the assistant's function call decision
+      const functionCallMessage = this.buildMessage(
+        'assistant',
+        '__FUNCTION_CALLS__',
+        { toolCalls: response.toolCalls }
+      );
+      currentSession = this.sessionStore.appendMessage(session.id, functionCallMessage);
+
+      // Execute tool calls and store results
+      for (const toolCall of response.toolCalls) {
+        const toolMessage = await this.executeToolCall(toolCall);
+        currentSession = this.sessionStore.appendMessage(session.id, toolMessage);
+      }
+
+      roundCount++;
     }
 
-    const assistantMessage = this.buildMessage('assistant', fullText);
-    this.sessionStore.appendMessage(session.id, assistantMessage);
+    // If we exceed max rounds, return an error message
+    const errorContent = 'I apologize, but I exceeded the maximum number of tool execution rounds. Please try simplifying your request.';
 
-    yield { type: 'completed', assistantMessage };
+    // Stream the error message
+    const chunkSize = 50;
+    for (let i = 0; i < errorContent.length; i += chunkSize) {
+      const delta = errorContent.slice(i, i + chunkSize);
+      yield { delta };
+    }
+
+    const errorMessage = this.buildMessage('assistant', errorContent);
+    this.sessionStore.appendMessage(session.id, errorMessage);
+
+    yield { type: 'completed', assistantMessage: errorMessage };
   }
 
   private async executeToolCall(toolCall: ToolCall): Promise<ChatToolMessage> {

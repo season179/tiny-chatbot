@@ -66,10 +66,18 @@
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        mountWidget();
+        mountWidget({
+          apiBaseUrl: 'http://localhost:4000',
+          tenantId: 'demo-tenant',
+          userId: 'demo-user'
+        });
       });
     } else {
-      mountWidget();
+      mountWidget({
+        apiBaseUrl: 'http://localhost:4000',
+        tenantId: 'demo-tenant',
+        userId: 'demo-user'
+      });
     }
   </script>
 </body>

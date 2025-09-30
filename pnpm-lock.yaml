@@ -73,6 +73,9 @@ importers:
 
   packages/widget:
     dependencies:
+      '@tiny-chatbot/shared':
+        specifier: workspace:^
+        version: link:../shared
       preact:
         specifier: ^10.19.3
         version: 10.27.2

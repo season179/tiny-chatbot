@@ -1,7 +1,11 @@
 import { useState } from 'preact/hooks';
+import { useChat } from './hooks/useChat';
+import { MessageList } from './components/MessageList';
+import { MessageInput } from './components/MessageInput';
 
 export function WidgetRoot() {
   const [open, setOpen] = useState(false);
+  const { messages, loading, error, sending, sendMessage } = useChat();
 
   if (!open) {
     return (
@@ -19,7 +23,8 @@ export function WidgetRoot() {
           background: '#2563eb',
           color: '#fff',
           boxShadow: '0 10px 25px rgba(37, 99, 235, 0.35)',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          fontSize: '24px'
         }}
       >
         💬
@@ -71,29 +76,31 @@ export function WidgetRoot() {
           ✕
         </button>
       </header>
-      <div style={{ padding: '16px', flex: 1, overflowY: 'auto', fontFamily: 'system-ui' }}>
-        <p style={{ marginTop: 0 }}>
-          Chat UI placeholder. Wire this up to backend messaging APIs and context bridge.
-        </p>
-      </div>
-      <form
-        style={{
-          display: 'flex',
-          gap: '8px',
-          padding: '16px',
-          borderTop: '1px solid #e2e8f0'
-        }}
-      >
-        <input
-          type="text"
-          placeholder="Type your message..."
-          style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5f5' }}
-          disabled
-        />
-        <button type="submit" disabled style={{ padding: '8px 16px', borderRadius: '8px' }}>
-          Send
-        </button>
-      </form>
+
+      {error ? (
+        <div
+          style={{
+            padding: '16px',
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#dc2626',
+            textAlign: 'center',
+            fontFamily: 'system-ui'
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, marginBottom: '8px', fontWeight: 500 }}>⚠️ Error</p>
+            <p style={{ margin: 0, fontSize: '14px' }}>{error}</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <MessageList messages={messages} loading={loading} />
+          <MessageInput onSend={sendMessage} disabled={sending} />
+        </>
+      )}
     </div>
   );
 }

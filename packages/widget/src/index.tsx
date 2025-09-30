@@ -1,13 +1,26 @@
 import { render } from 'preact';
 import { WidgetRoot } from './WidgetRoot';
+import { setConfig, type WidgetConfig } from './config';
 
-export interface WidgetOptions {
+export interface WidgetOptions extends WidgetConfig {
   container?: HTMLElement;
 }
 
 let rootElement: HTMLElement | null = null;
 
-export function mountWidget(options: WidgetOptions = {}) {
+export function mountWidget(options: WidgetOptions) {
+  if (!options.apiBaseUrl || !options.tenantId) {
+    throw new Error('apiBaseUrl and tenantId are required to mount the widget');
+  }
+
+  // Set global config
+  setConfig({
+    apiBaseUrl: options.apiBaseUrl,
+    tenantId: options.tenantId,
+    userId: options.userId,
+    traits: options.traits
+  });
+
   const target = options.container ?? document.body;
 
   if (!target) {

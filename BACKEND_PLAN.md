@@ -12,7 +12,7 @@
 - [x] Provide an in-memory session store and a conversation service that returns deterministic canned replies.
 - [x] Wire up configuration handling with `dotenv` and validation for runtime settings.
 - [x] Add Vitest coverage for route validation and the canned-response flow.
-- [ ] (Optional) Update the widget to call the new API endpoints once the backend is ready.
+- [x] (Optional) Update the widget to call the new API endpoints once the backend is ready.
 
 ## Notes
 - ✅ `packages/shared` now exposes all request/response contracts with Zod schemas and a ready-to-use API client.

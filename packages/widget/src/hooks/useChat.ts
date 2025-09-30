@@ -88,13 +88,22 @@ export function useChat() {
 
       try {
         // Stream the response
+        const streamStart = Date.now();
+        let chunkCount = 0;
+        console.log(`[useChat ${new Date().toISOString()}] Starting to consume stream...`);
+
         for await (const event of client.streamMessage({
           sessionId: state.sessionId,
           message: content
         })) {
           if (event.type === 'chunk') {
+            chunkCount++;
+            const elapsed = Date.now() - streamStart;
+            console.log(`[useChat +${elapsed}ms] Processing chunk #${chunkCount}, length: ${event.data?.length}`);
+
             accumulatedContent += event.data;
 
+            const updateStart = Date.now();
             // Update the assistant message with accumulated content
             setState(prev => ({
               ...prev,
@@ -104,7 +113,10 @@ export function useChat() {
                   : msg
               )
             }));
+            const updateDuration = Date.now() - updateStart;
+            console.log(`[useChat +${Date.now() - streamStart}ms] setState completed in ${updateDuration}ms`);
           } else if (event.type === 'completed') {
+            console.log(`[useChat +${Date.now() - streamStart}ms] Stream completed, received ${chunkCount} chunks`);
             // Replace placeholder with final message from server
             setState(prev => ({
               ...prev,

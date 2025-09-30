@@ -69,7 +69,8 @@ export class ApiClient {
    * Returns an async generator that yields SSE events
    */
   async *streamMessage(request: ChatRequest): AsyncGenerator<StreamEvent> {
-    console.log('[ApiClient] Starting stream request to:', `${this.baseUrl}/api/chat/stream`);
+    const startTime = Date.now();
+    console.log(`[ApiClient ${new Date().toISOString()}] Starting stream request to:`, `${this.baseUrl}/api/chat/stream`);
     console.log('[ApiClient] Request payload:', request);
 
     let response: Response;
@@ -82,7 +83,8 @@ export class ApiClient {
         },
         body: JSON.stringify(request)
       });
-      console.log('[ApiClient] Response received:', response.status, response.statusText);
+      const fetchDuration = Date.now() - startTime;
+      console.log(`[ApiClient +${fetchDuration}ms] Response received:`, response.status, response.statusText);
     } catch (fetchError) {
       console.error('[ApiClient] Fetch failed:', fetchError);
       throw fetchError;
@@ -103,13 +105,17 @@ export class ApiClient {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let chunkCount = 0;
 
     try {
-      console.log('[ApiClient] Starting to read stream...');
+      console.log(`[ApiClient +${Date.now() - startTime}ms] Starting to read stream...`);
       while (true) {
+        const readStart = Date.now();
         const { done, value } = await reader.read();
+        const readDuration = Date.now() - readStart;
+
         if (done) {
-          console.log('[ApiClient] Stream ended');
+          console.log(`[ApiClient +${Date.now() - startTime}ms] Stream ended after ${chunkCount} chunks`);
           break;
         }
 
@@ -124,12 +130,15 @@ export class ApiClient {
             const data = line.slice(6); // Remove 'data: ' prefix
             if (data.trim()) {
               const event: StreamEvent = JSON.parse(data);
-              console.log('[ApiClient] Received event:', event.type);
+              chunkCount++;
+              const elapsed = Date.now() - startTime;
+              console.log(`[ApiClient +${elapsed}ms] Chunk #${chunkCount} (read took ${readDuration}ms):`,
+                event.type === 'chunk' ? `"${event.data?.substring(0, 50)}..."` : event.type);
               yield event;
 
               // Stop on error or completion
               if (event.type === 'error' || event.type === 'completed') {
-                console.log('[ApiClient] Stream completed with:', event.type);
+                console.log(`[ApiClient +${elapsed}ms] Stream completed with:`, event.type);
                 return;
               }
             }
@@ -138,7 +147,7 @@ export class ApiClient {
       }
     } finally {
       reader.releaseLock();
-      console.log('[ApiClient] Reader released');
+      console.log(`[ApiClient +${Date.now() - startTime}ms] Reader released`);
     }
   }
 

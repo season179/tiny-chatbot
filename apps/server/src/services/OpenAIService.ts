@@ -99,7 +99,7 @@ export class OpenAIService {
       const params: ResponseCreateParamsNonStreaming = {
         model: this.model,
         input,
-        reasoning: { effort: 'minimal' },
+        reasoning: { effort: 'low' },
         text: { verbosity: 'low' },
         max_output_tokens: options.maxOutputTokens ?? this.maxOutputTokens
       };
@@ -171,12 +171,15 @@ export class OpenAIService {
         messageCount: messages.length
       });
 
+      const streamRequestStart = Date.now();
       const stream = await retryWithBackoff(
         async () =>
           await this.client.responses.create({
             model: this.model,
             input,
-            reasoning: { effort: 'minimal' },
+            // Use 'low' reasoning effort for better balance of speed and intelligence
+            // GPT-5 is a reasoning model - some delay is expected for chain-of-thought
+            reasoning: { effort: 'low' },
             text: { verbosity: 'low' },
             max_output_tokens: options.maxOutputTokens ?? this.maxOutputTokens,
             stream: true
@@ -184,10 +187,26 @@ export class OpenAIService {
         this.retryOptions
       );
 
+      const streamCreated = Date.now();
+      this.logger?.info('OpenAI stream created', {
+        model: this.model,
+        durationMs: streamCreated - streamRequestStart
+      });
+
       let fullText = '';
+      let firstChunkReceived = false;
 
       for await (const event of stream) {
         if (event.type === 'response.output_text.delta') {
+          if (!firstChunkReceived) {
+            const ttft = Date.now() - streamRequestStart;
+            this.logger?.info('First chunk received (TTFT)', {
+              model: this.model,
+              ttftMs: ttft
+            });
+            firstChunkReceived = true;
+          }
+
           const delta = event.delta;
           fullText += delta;
           yield { delta };

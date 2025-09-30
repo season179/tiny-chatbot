@@ -143,19 +143,19 @@ export class ConversationService {
         }
       );
 
-      // If no tool calls, stream the final response
+      // If no tool calls, NOW use REAL streaming from OpenAI
       if (response.finishReason !== 'tool_calls' || !response.toolCalls) {
-        // We already have the content, but stream it for consistency
-        const content = response.content || '';
+        // Use real streaming API instead of fake chunking
+        let fullContent = '';
 
-        // Stream the response character by character (or in chunks)
-        const chunkSize = 50; // Characters per chunk
-        for (let i = 0; i < content.length; i += chunkSize) {
-          const delta = content.slice(i, i + chunkSize);
-          yield { delta };
+        for await (const chunk of this.openAIService.generateStreamingResponse(
+          messagesWithSystemPrompt
+        )) {
+          fullContent += chunk.delta;
+          yield { delta: chunk.delta };
         }
 
-        const assistantMessage = this.buildMessage('assistant', content);
+        const assistantMessage = this.buildMessage('assistant', fullContent);
         this.sessionStore.appendMessage(session.id, assistantMessage);
 
         yield { type: 'completed', assistantMessage };

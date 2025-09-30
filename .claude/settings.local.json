@@ -5,7 +5,18 @@
       "Bash(pnpm dev:*)",
       "mcp__playwright__browser_click",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(pnpm --filter @tiny-chatbot/server build)",
+      "Bash(timeout 3 pnpm --filter @tiny-chatbot/server dev)",
+      "Bash(PORT=99999 timeout 2 pnpm dev)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm --filter @tiny-chatbot/server test)",
+      "Bash(curl:*)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": []

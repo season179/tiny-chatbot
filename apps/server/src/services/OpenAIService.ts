@@ -232,31 +232,82 @@ export class OpenAIService {
   private convertMessagesToOpenAIFormat(
     messages: ChatMessage[]
   ): ResponseCreateParamsNonStreaming['input'] {
-    const formatted = messages.map((msg) => {
-      // Map our role types to OpenAI's role types
-      let role: 'user' | 'assistant' | 'system';
-      if (msg.role === 'system') {
-        role = 'system';
-      } else if (msg.role === 'user') {
-        role = 'user';
+    const formatted: Array<
+      | {
+          type: 'message';
+          role: 'user' | 'assistant' | 'system';
+          content: Array<{ type: string; text: string }>;
+        }
+      | {
+          type: 'function_call';
+          call_id: string;
+          name: string;
+          arguments: string;
+        }
+      | {
+          type: 'function_call_output';
+          call_id: string;
+          output: string;
+        }
+    > = [];
+
+    for (const msg of messages) {
+      // Handle tool messages specially - they must be converted to function_call_output items
+      if (msg.role === 'tool') {
+        const toolMsg = msg as ChatToolMessage;
+        formatted.push({
+          type: 'function_call_output',
+          call_id: toolMsg.toolCallId || '',
+          output: JSON.stringify({
+            status: toolMsg.result?.status || 'unknown',
+            stdout: toolMsg.result?.stdout,
+            stderr: toolMsg.result?.stderr,
+            exitCode: toolMsg.result?.exitCode,
+            errorMessage: toolMsg.result?.errorMessage
+          })
+        });
+      } else if (msg.role === 'assistant' && msg.content === '__FUNCTION_CALLS__') {
+        // This is a function call marker - convert metadata back to function_call items
+        const toolCalls = (msg.metadata?.toolCalls as Array<{
+          id: string;
+          name: string;
+          arguments: Record<string, unknown>;
+        }>) || [];
+
+        for (const toolCall of toolCalls) {
+          formatted.push({
+            type: 'function_call',
+            call_id: toolCall.id,
+            name: toolCall.name,
+            arguments: JSON.stringify(toolCall.arguments)
+          });
+        }
       } else {
-        // Treat assistant and tool outputs as assistant role for the OpenAI Responses API
-        role = 'assistant';
+        // Map our role types to OpenAI's role types
+        let role: 'user' | 'assistant' | 'system';
+        if (msg.role === 'system') {
+          role = 'system';
+        } else if (msg.role === 'user') {
+          role = 'user';
+        } else {
+          // Assistant messages
+          role = 'assistant';
+        }
+
+        const contentType = role === 'assistant' ? 'output_text' : 'input_text';
+
+        formatted.push({
+          role,
+          type: 'message',
+          content: [
+            {
+              type: contentType,
+              text: this.renderMessageContent(msg)
+            }
+          ]
+        });
       }
-
-      const contentType = role === 'assistant' ? 'output_text' : 'input_text';
-
-      return {
-        role,
-        type: 'message' as const,
-        content: [
-          {
-            type: contentType,
-            text: this.renderMessageContent(msg)
-          }
-        ]
-      };
-    });
+    }
 
     return formatted as ResponseCreateParamsNonStreaming['input'];
   }
@@ -318,6 +369,19 @@ export class OpenAIService {
 
     if (outputItems.length === 0) {
       throw new OpenAIError('No output in OpenAI response');
+    }
+
+    // Check for function_call items at the output level (not in message content)
+    const functionCallItems = outputItems.filter((item) => item.type === 'function_call');
+    if (functionCallItems.length > 0) {
+      return {
+        finishReason: 'tool_calls',
+        toolCalls: functionCallItems.map((item: any) => ({
+          id: item.call_id || item.id || '',
+          name: item.name || '',
+          arguments: JSON.parse(item.arguments || '{}')
+        }))
+      };
     }
 
     const messageItem = outputItems.find(

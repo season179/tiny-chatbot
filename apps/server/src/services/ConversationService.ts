@@ -84,7 +84,16 @@ export class ConversationService {
         };
       }
 
-      // Execute tool calls
+      // Store the assistant's function call decision
+      // We store a special marker message that will be converted back to function_call items
+      const functionCallMessage = this.buildMessage(
+        'assistant',
+        '__FUNCTION_CALLS__', // Special marker
+        { toolCalls: response.toolCalls }
+      );
+      currentSession = this.sessionStore.appendMessage(session.id, functionCallMessage);
+
+      // Execute tool calls and store results
       for (const toolCall of response.toolCalls) {
         const toolMessage = await this.executeToolCall(toolCall);
         currentSession = this.sessionStore.appendMessage(session.id, toolMessage);
@@ -261,13 +270,23 @@ export class ConversationService {
     return { command, args };
   }
 
-  private buildMessage(role: ChatMessage['role'], content: string): ChatMessage {
-    return {
+  private buildMessage(
+    role: ChatMessage['role'],
+    content: string,
+    metadata?: Record<string, unknown>
+  ): ChatMessage {
+    const baseMsg = {
       id: nanoid(),
       role,
       content,
       createdAt: new Date().toISOString()
     };
+
+    if (metadata) {
+      return { ...baseMsg, metadata } as ChatMessage;
+    }
+
+    return baseMsg as ChatMessage;
   }
 
   private async buildAssistantMessage(session: ChatSession): Promise<ChatMessage> {

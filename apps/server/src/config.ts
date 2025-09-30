@@ -21,6 +21,9 @@ const configSchema = z.object({
   OPENAI_MODEL: z.string().default('gpt-5'),
   OPENAI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().optional(),
 
+  // Agentic behavior settings
+  MAX_TOOL_ROUNDS: z.coerce.number().int().min(1).max(100).default(10),
+
   // Database settings
   DATABASE_PATH: z.string().default('./data/sessions.db'),
 

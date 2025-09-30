@@ -82,7 +82,10 @@ describe('OpenAIService', () => {
 
       const result = await service.generateResponse(messages);
 
-      expect(result).toBe('Hello! How can I help you?');
+      expect(result).toEqual({
+        content: 'Hello! How can I help you?',
+        finishReason: 'stop'
+      });
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-5',

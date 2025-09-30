@@ -2,11 +2,13 @@ import OpenAI from 'openai';
 import type { ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses';
 import type { Config } from '../config.js';
 import type { ChatMessage, ChatToolMessage } from '../repositories/SessionStore.js';
+import type { ShellToolDefinition } from '../types/tools.js';
 import { retryWithBackoff, type RetryOptions } from '../utils/retry.js';
 
 export interface OpenAIGenerateOptions {
   temperature?: number;
   maxOutputTokens?: number;
+  tools?: ShellToolDefinition[];
 }
 
 export interface StreamChunk {
@@ -17,6 +19,18 @@ export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface GenerateResponseResult {
+  content?: string;
+  toolCalls?: ToolCall[];
+  finishReason: 'stop' | 'tool_calls' | 'length' | 'content_filter' | 'error';
 }
 
 export interface OpenAILogger {
@@ -71,25 +85,39 @@ export class OpenAIService {
   async generateResponse(
     messages: ChatMessage[],
     options: OpenAIGenerateOptions = {}
-  ): Promise<string> {
+  ): Promise<GenerateResponseResult> {
     const startTime = Date.now();
     try {
       const input = this.convertMessagesToOpenAIFormat(messages);
 
       this.logger?.info('OpenAI API request initiated', {
         model: this.model,
-        messageCount: messages.length
+        messageCount: messages.length,
+        toolsEnabled: !!options.tools
       });
 
+      const params: ResponseCreateParamsNonStreaming = {
+        model: this.model,
+        input,
+        reasoning: { effort: 'minimal' },
+        text: { verbosity: 'low' },
+        max_output_tokens: options.maxOutputTokens ?? this.maxOutputTokens
+      };
+
+      // Add tools if provided
+      // Note: The Responses API tool format is different from Chat Completions API
+      if (options.tools && options.tools.length > 0) {
+        params.tools = options.tools.map((tool) => ({
+          type: 'function' as const,
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema,
+          strict: false
+        })) as any; // Type assertion needed due to SDK type mismatch
+      }
+
       const response = await retryWithBackoff(
-        async () =>
-          await this.client.responses.create({
-            model: this.model,
-            input,
-            reasoning: { effort: 'minimal' },
-            text: { verbosity: 'low' },
-            max_output_tokens: options.maxOutputTokens ?? this.maxOutputTokens
-          }),
+        async () => await this.client.responses.create(params),
         this.retryOptions
       );
 
@@ -102,7 +130,7 @@ export class OpenAIService {
         ...tokenUsage
       });
 
-      return this.extractTextFromResponse(response);
+      return this.extractResponseResult(response);
     } catch (error) {
       const duration = Date.now() - startTime;
 
@@ -281,6 +309,82 @@ export class OpenAIService {
     }
 
     return segments.join('\n\n');
+  }
+
+  private extractResponseResult(
+    response: OpenAI.Responses.Response
+  ): GenerateResponseResult {
+    const outputItems = response.output ?? [];
+
+    if (outputItems.length === 0) {
+      throw new OpenAIError('No output in OpenAI response');
+    }
+
+    const messageItem = outputItems.find(
+      (item): item is OpenAI.Responses.ResponseOutputMessage => item.type === 'message'
+    );
+
+    if (!messageItem) {
+      const availableTypes = outputItems
+        .map((item) => ('type' in item ? String(item.type) : 'unknown'))
+        .join(', ');
+      throw new OpenAIError(
+        `No message output in OpenAI response. Output item types: ${availableTypes || 'none'}`
+      );
+    }
+
+    const content = messageItem.content;
+
+    if (!Array.isArray(content) || content.length === 0) {
+      throw new OpenAIError('No content in OpenAI message');
+    }
+
+    // Extract text content
+    const textSegments = content
+      .filter(
+        (part): part is OpenAI.Responses.ResponseOutputText =>
+          typeof part === 'object' &&
+          part !== null &&
+          'type' in part &&
+          (part as { type: unknown }).type === 'output_text'
+      )
+      .map((part) => part.text);
+
+    // Extract tool calls
+    // Note: Responses API returns function_call items in content
+    const toolCalls = content
+      .filter(
+        (part): boolean =>
+          typeof part === 'object' &&
+          part !== null &&
+          'type' in part &&
+          (part as { type: unknown }).type === 'function_call'
+      )
+      .map((part: any) => ({
+        id: part.id || '',
+        name: part.name || '',
+        arguments: (part.arguments as Record<string, unknown>) || {}
+      }));
+
+    // Determine finish reason
+    let finishReason: GenerateResponseResult['finishReason'] = 'stop';
+    if (toolCalls.length > 0) {
+      finishReason = 'tool_calls';
+    }
+
+    const result: GenerateResponseResult = {
+      finishReason
+    };
+
+    if (textSegments.length > 0) {
+      result.content = textSegments.join('');
+    }
+
+    if (toolCalls.length > 0) {
+      result.toolCalls = toolCalls;
+    }
+
+    return result;
   }
 
   private extractTextFromResponse(response: OpenAI.Responses.Response): string {

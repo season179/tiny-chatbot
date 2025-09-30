@@ -13,7 +13,10 @@ describe('ConversationService', () => {
     sessionStore = new InMemorySessionStore();
 
     mockOpenAIService = {
-      generateResponse: vi.fn().mockResolvedValue('Mocked OpenAI response'),
+      generateResponse: vi.fn().mockResolvedValue({
+        content: 'Mocked OpenAI response',
+        finishReason: 'stop'
+      }),
       generateStreamingResponse: vi.fn().mockImplementation(async function* (): AsyncGenerator<{ delta: string }, string, undefined> {
         yield { delta: 'Mocked ' };
         yield { delta: 'streaming ' };
@@ -65,7 +68,10 @@ describe('ConversationService', () => {
             role: 'user',
             content: 'Hello'
           })
-        ])
+        ]),
+        expect.objectContaining({
+          tools: undefined
+        })
       );
     });
 
@@ -105,7 +111,10 @@ describe('ConversationService', () => {
           expect.objectContaining({ role: 'user', content: 'First' }),
           expect.objectContaining({ role: 'assistant', content: 'Mocked OpenAI response' }),
           expect.objectContaining({ role: 'user', content: 'Second' })
-        ])
+        ]),
+        expect.objectContaining({
+          tools: undefined
+        })
       );
     });
   });

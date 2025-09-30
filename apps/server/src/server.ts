@@ -7,6 +7,8 @@ import { SqliteSessionStore } from './repositories/SqliteSessionStore.js';
 import { ConversationService } from './services/ConversationService.js';
 import { OpenAIService } from './services/OpenAIService.js';
 import { PromptService } from './services/PromptService.js';
+import { ShellToolService } from './services/ShellToolService.js';
+import { DEFAULT_TOOLS_CONFIG, SHELL_TOOL_DEFINITIONS } from './config/toolsConfig.js';
 import { initDatabase, closeDatabase } from './db/index.js';
 
 loadEnv();
@@ -49,7 +51,22 @@ export async function buildServer(): Promise<FastifyInstance> {
     app.log.warn('PromptService not initialized - using default behavior without system prompts');
   }
 
-  const conversationService = new ConversationService(sessionStore, openAIService, promptService);
+  // Initialize ShellToolService
+  const shellToolService = new ShellToolService(DEFAULT_TOOLS_CONFIG, app.log);
+  app.log.info(
+    'ShellToolService initialized with tools: ' +
+      `${SHELL_TOOL_DEFINITIONS.map((t) => t.name).join(', ')} ` +
+      `(workingDir: ${DEFAULT_TOOLS_CONFIG.workingDirRoot})`
+  );
+
+  const conversationService = new ConversationService(
+    sessionStore,
+    openAIService,
+    promptService,
+    shellToolService,
+    SHELL_TOOL_DEFINITIONS,
+    { maxToolRounds: config.MAX_TOOL_ROUNDS }
+  );
 
   await registerRoutes(app, { sessionStore, conversationService, openAIService });
 

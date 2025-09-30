@@ -164,29 +164,59 @@ pnpm db:studio    # Open Drizzle Studio to inspect database
 
 ---
 
-### 2.3 Error Handling & Resilience (Production Critical)
+### 2.3 Error Handling & Resilience (Production Critical) ✅ COMPLETED
 
 **Why:** Handle API failures, rate limits, and network issues gracefully.
 
 **Tasks:**
-- [ ] Add retry logic for transient failures in OpenAIService
-  - Implement exponential backoff
-  - Add max retries configuration (default: 3)
-  - Retry on network errors and 5xx responses
-- [ ] Handle OpenAI rate limits (429 responses)
-  - Parse retry-after header
-  - Return user-friendly error messages
-  - Log rate limit events
-- [ ] Add request/response logging to OpenAIService
-  - Log token usage per request (from response metadata)
-  - Track response times
-  - Log errors with full context
-- [ ] Add health checks for OpenAI connectivity (optional)
-- [ ] Create error recovery strategies
-  - Graceful degradation for API failures
-  - User-friendly error messages in responses
+- [x] Add retry logic for transient failures in OpenAIService
+  - Implemented exponential backoff with configurable options
+  - Default: 3 retries, 1s initial delay, 10s max delay, 2x backoff multiplier
+  - Retries on network errors (ECONNRESET, ETIMEDOUT, etc.) and 5xx responses
+  - File: `apps/server/src/utils/retry.ts`
+- [x] Handle OpenAI rate limits (429 responses)
+  - Parse retry-after header from error responses
+  - Throw specialized `OpenAIRateLimitError` with retry information
+  - Rate limit errors are logged with context
+  - File: `apps/server/src/services/OpenAIService.ts`
+- [x] Add request/response logging to OpenAIService
+  - Log token usage per request (promptTokens, completionTokens, totalTokens)
+  - Track response times (durationMs) for all requests
+  - Log errors with full context (model, duration, error message)
+  - Optional logger injection for flexibility
+  - Files: `apps/server/src/services/OpenAIService.ts`, `apps/server/src/server.ts`
+- [x] Add health checks for OpenAI connectivity
+  - New `/health` endpoint with detailed system status checks
+  - Tests database and OpenAI connectivity
+  - Returns 200 (healthy) or 503 (degraded) with diagnostic info
+  - Health check uses minimal tokens (5 max) to verify API access
+  - File: `apps/server/src/routes/health.ts`
+- [x] Create error recovery strategies
+  - Automatic retries with exponential backoff for transient failures
+  - Specialized error types (OpenAIError, OpenAIRateLimitError)
+  - User-friendly error messages returned to clients
+  - Comprehensive error logging for debugging
 
-**Effort:** Medium (4-5 hours)
+**Testing:**
+- Created 14 new tests for retry utility covering all retry scenarios
+- Added 8 new tests for OpenAIService error handling and health checks
+- **Result: 125/125 tests passing** ✅
+- Files: `apps/server/src/utils/retry.test.ts`, `apps/server/src/services/OpenAIService.test.ts`
+
+**Usage:**
+```bash
+# Health check endpoints:
+curl http://localhost:4000/healthz              # Simple health check
+curl http://localhost:4000/health               # Detailed health status
+
+# Logs include token usage:
+# {"level":30,"msg":"OpenAI API request completed","promptTokens":10,"completionTokens":20,"totalTokens":30,"durationMs":450}
+
+# Rate limit errors are automatically retried with exponential backoff
+# After max retries, returns OpenAIRateLimitError with retry-after information
+```
+
+**Effort:** Medium (4-5 hours) - Completed!
 
 ---
 

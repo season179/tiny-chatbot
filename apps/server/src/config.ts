@@ -20,7 +20,6 @@ const configSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
   OPENAI_MODEL: z.string().default('gpt-5'),
   OPENAI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().optional(),
-  OPENAI_TEMPERATURE: z.coerce.number().min(0).max(2).default(1.0),
 
   // Database settings
   DATABASE_PATH: z.string().default('./data/sessions.db'),

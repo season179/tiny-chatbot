@@ -38,7 +38,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   const sessionStore = new SqliteSessionStore();
-  const openAIService = new OpenAIService(config);
+  const openAIService = new OpenAIService(config, app.log);
 
   // Initialize PromptService (optional - gracefully handles missing config file)
   let promptService: PromptService | undefined;
@@ -51,7 +51,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   const conversationService = new ConversationService(sessionStore, openAIService, promptService);
 
-  await registerRoutes(app, { sessionStore, conversationService });
+  await registerRoutes(app, { sessionStore, conversationService, openAIService });
 
   // Handle graceful shutdown
   app.addHook('onClose', async () => {

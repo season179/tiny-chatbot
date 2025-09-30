@@ -14,6 +14,13 @@ export async function registerStreamRoute(app: FastifyInstance, conversationServ
       });
     }
 
+    // Hijack the reply to take full control of the response lifecycle
+    reply.hijack();
+
+    // Set CORS headers manually for streaming response
+    reply.raw.setHeader('Access-Control-Allow-Origin', '*');
+    reply.raw.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    reply.raw.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
     reply.raw.setHeader('Connection', 'keep-alive');

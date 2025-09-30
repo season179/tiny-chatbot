@@ -53,30 +53,37 @@ export function MessageList({ messages, loading }: MessageListProps) {
           <p style={{ margin: 0 }}>👋 Welcome! How can I help you today?</p>
         </div>
       ) : (
-        messages.map((message) => (
-          <div
-            key={message.id}
-            style={{
-              display: 'flex',
-              justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start'
-            }}
-          >
+        messages
+          // Filter out tool messages and internal assistant tool call markers
+          .filter((message) => {
+            if (message.role === 'tool') return false;
+            if (message.role === 'assistant' && message.content === '__FUNCTION_CALLS__') return false;
+            return true;
+          })
+          .map((message) => (
             <div
+              key={message.id}
               style={{
-                maxWidth: '80%',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                background: message.role === 'user' ? '#2563eb' : '#f3f4f6',
-                color: message.role === 'user' ? '#ffffff' : '#1f2937',
-                wordBreak: 'break-word',
-                fontSize: '14px',
-                lineHeight: '1.5'
+                display: 'flex',
+                justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start'
               }}
             >
-              {message.content}
+              <div
+                style={{
+                  maxWidth: '80%',
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  background: message.role === 'user' ? '#2563eb' : '#f3f4f6',
+                  color: message.role === 'user' ? '#ffffff' : '#1f2937',
+                  wordBreak: 'break-word',
+                  fontSize: '14px',
+                  lineHeight: '1.5'
+                }}
+              >
+                {message.content}
+              </div>
             </div>
-          </div>
-        ))
+          ))
       )}
     </div>
   );

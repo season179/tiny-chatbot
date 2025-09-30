@@ -30,9 +30,10 @@ Implementation plan for giving the tiny-chatbot backend limited agentic capabili
 - Handle errors (command failure, timeout) gracefully—return assistant-visible explanation plus log details.
 - _Done — both `handleUserMessage` and `handleUserMessageStreaming` implement the agentic loop with max 10 tool rounds, tool execution via `ShellToolService`, and graceful error handling._
 
-## 5. API & Widget Updates
+## 5. API & Widget Updates ✅
 - Ensure `/api/chat` and `/api/chat/stream` propagate new message roles and optional tool telemetry.
 - Update widget rendering (if enabled) to ignore or display tool messages appropriately; preserve backwards compatibility when tool role absent.
+- _Done — Widget now uses streaming API (`useChat.ts` updated to use `client.streamMessage()`), MessageList filters out tool messages and `__FUNCTION_CALLS__` markers, all 141 server tests passing._
 
 ## 6. Security & Compliance
 - Enforce sandbox via config (no arbitrary command chaining, capped runtime/output size, path allowlist).

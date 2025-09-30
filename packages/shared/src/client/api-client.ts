@@ -69,22 +69,34 @@ export class ApiClient {
    * Returns an async generator that yields SSE events
    */
   async *streamMessage(request: ChatRequest): AsyncGenerator<StreamEvent> {
-    const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.headers
-      },
-      body: JSON.stringify(request)
-    });
+    console.log('[ApiClient] Starting stream request to:', `${this.baseUrl}/api/chat/stream`);
+    console.log('[ApiClient] Request payload:', request);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...this.headers
+        },
+        body: JSON.stringify(request)
+      });
+      console.log('[ApiClient] Response received:', response.status, response.statusText);
+    } catch (fetchError) {
+      console.error('[ApiClient] Fetch failed:', fetchError);
+      throw fetchError;
+    }
 
     if (!response.ok) {
+      console.error('[ApiClient] Response not OK:', response.status);
       throw new ApiClientError(response.status, {
         error: `HTTP ${response.status}: ${response.statusText}`
       });
     }
 
     if (!response.body) {
+      console.error('[ApiClient] Response body is null');
       throw new Error('Response body is null');
     }
 
@@ -93,9 +105,13 @@ export class ApiClient {
     let buffer = '';
 
     try {
+      console.log('[ApiClient] Starting to read stream...');
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('[ApiClient] Stream ended');
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -108,10 +124,12 @@ export class ApiClient {
             const data = line.slice(6); // Remove 'data: ' prefix
             if (data.trim()) {
               const event: StreamEvent = JSON.parse(data);
+              console.log('[ApiClient] Received event:', event.type);
               yield event;
 
               // Stop on error or completion
               if (event.type === 'error' || event.type === 'completed') {
+                console.log('[ApiClient] Stream completed with:', event.type);
                 return;
               }
             }
@@ -120,6 +138,7 @@ export class ApiClient {
       }
     } finally {
       reader.releaseLock();
+      console.log('[ApiClient] Reader released');
     }
   }
 

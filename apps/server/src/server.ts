@@ -36,7 +36,10 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(cors, {
     origin: config.CORS_ORIGIN === '*' ? true : config.CORS_ORIGIN,
-    credentials: config.CORS_CREDENTIALS
+    credentials: config.CORS_CREDENTIALS,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Type']
   });
 
   const sessionStore = new SqliteSessionStore();

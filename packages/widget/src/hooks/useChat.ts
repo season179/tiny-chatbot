@@ -69,16 +69,70 @@ export function useChat() {
     }));
 
     try {
-      const response = await client.sendMessage({
-        sessionId: state.sessionId,
-        message: content
-      });
+      // Create a placeholder for the assistant's streaming message
+      const assistantMessageId = `assistant-${Date.now()}`;
+      let accumulatedContent = '';
 
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        createdAt: new Date().toISOString()
+      };
+
+      // Add placeholder message
       setState(prev => ({
         ...prev,
-        messages: [...prev.messages, response.message],
-        sending: false
+        messages: [...prev.messages, assistantMessage]
       }));
+
+      try {
+        // Stream the response
+        for await (const event of client.streamMessage({
+          sessionId: state.sessionId,
+          message: content
+        })) {
+          if (event.type === 'chunk') {
+            accumulatedContent += event.data;
+
+            // Update the assistant message with accumulated content
+            setState(prev => ({
+              ...prev,
+              messages: prev.messages.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              )
+            }));
+          } else if (event.type === 'completed') {
+            // Replace placeholder with final message from server
+            setState(prev => ({
+              ...prev,
+              messages: prev.messages.map(msg =>
+                msg.id === assistantMessageId ? event.message : msg
+              ),
+              sending: false
+            }));
+            return; // Successfully completed
+          } else if (event.type === 'error') {
+            throw new Error(event.error);
+          }
+        }
+
+        // If we exit the loop without getting a 'completed' event, mark as done anyway
+        setState(prev => ({
+          ...prev,
+          sending: false
+        }));
+      } catch (streamError) {
+        // Remove placeholder message on error
+        setState(prev => ({
+          ...prev,
+          messages: prev.messages.filter(msg => msg.id !== assistantMessageId),
+          sending: false
+        }));
+        throw streamError;
+      }
     } catch (error) {
       console.error('Failed to send message:', error);
       setState(prev => ({

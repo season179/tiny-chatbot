@@ -1,31 +1,44 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ConversationService, SessionNotFoundError } from './ConversationService.js';
 import { InMemorySessionStore } from '../repositories/InMemorySessionStore.js';
 import type { SessionStore } from '../repositories/SessionStore.js';
+import type { OpenAIService } from './OpenAIService.js';
 
 describe('ConversationService', () => {
   let sessionStore: SessionStore;
   let conversationService: ConversationService;
+  let mockOpenAIService: OpenAIService;
 
   beforeEach(() => {
     sessionStore = new InMemorySessionStore();
-    conversationService = new ConversationService(sessionStore);
+
+    mockOpenAIService = {
+      generateResponse: vi.fn().mockResolvedValue('Mocked OpenAI response'),
+      generateStreamingResponse: vi.fn().mockImplementation(async function* (): AsyncGenerator<{ delta: string }, string, undefined> {
+        yield { delta: 'Mocked ' };
+        yield { delta: 'streaming ' };
+        yield { delta: 'response' };
+        return 'Mocked streaming response';
+      })
+    } as unknown as OpenAIService;
+
+    conversationService = new ConversationService(sessionStore, mockOpenAIService);
   });
 
   describe('handleUserMessage', () => {
-    it('should throw SessionNotFoundError for non-existent session', () => {
-      expect(() => {
+    it('should throw SessionNotFoundError for non-existent session', async () => {
+      await expect(
         conversationService.handleUserMessage({
           sessionId: 'non-existent',
           message: 'Hello'
-        });
-      }).toThrow(SessionNotFoundError);
+        })
+      ).rejects.toThrow(SessionNotFoundError);
     });
 
-    it('should return assistant message for valid session', () => {
+    it('should return assistant message for valid session', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
-      const result = conversationService.handleUserMessage({
+      const result = await conversationService.handleUserMessage({
         sessionId: session.id,
         message: 'Hello'
       });
@@ -33,26 +46,33 @@ describe('ConversationService', () => {
       expect(result.sessionId).toBe(session.id);
       expect(result.assistantMessage).toBeDefined();
       expect(result.assistantMessage.role).toBe('assistant');
-      expect(result.assistantMessage.content).toBeTruthy();
+      expect(result.assistantMessage.content).toBe('Mocked OpenAI response');
       expect(result.assistantMessage.id).toBeTruthy();
       expect(result.assistantMessage.createdAt).toBeTruthy();
     });
 
-    it('should include user message in response content', () => {
+    it('should call OpenAI service with conversation history', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
-      const result = conversationService.handleUserMessage({
+      await conversationService.handleUserMessage({
         sessionId: session.id,
-        message: 'Test message'
+        message: 'Hello'
       });
 
-      expect(result.assistantMessage.content).toContain('Test message');
+      expect(mockOpenAIService.generateResponse).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: 'user',
+            content: 'Hello'
+          })
+        ])
+      );
     });
 
-    it('should store both user and assistant messages in session', () => {
+    it('should store both user and assistant messages in session', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
-      conversationService.handleUserMessage({
+      await conversationService.handleUserMessage({
         sessionId: session.id,
         message: 'Hello'
       });
@@ -62,97 +82,134 @@ describe('ConversationService', () => {
       expect(updatedSession?.messages[0].role).toBe('user');
       expect(updatedSession?.messages[0].content).toBe('Hello');
       expect(updatedSession?.messages[1].role).toBe('assistant');
+      expect(updatedSession?.messages[1].content).toBe('Mocked OpenAI response');
     });
 
-    it('should increment reply count for subsequent messages', () => {
+    it('should include conversation history in subsequent calls', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
-      const result1 = conversationService.handleUserMessage({
+      await conversationService.handleUserMessage({
         sessionId: session.id,
         message: 'First'
       });
 
-      const result2 = conversationService.handleUserMessage({
+      vi.mocked(mockOpenAIService.generateResponse).mockClear();
+
+      await conversationService.handleUserMessage({
         sessionId: session.id,
         message: 'Second'
       });
 
-      expect(result1.assistantMessage.content).toContain('#1');
-      expect(result2.assistantMessage.content).toContain('#2');
-    });
-
-    it('should return deterministic canned response', () => {
-      const session = sessionStore.createSession({ tenantId: 'tenant-1' });
-
-      const result = conversationService.handleUserMessage({
-        sessionId: session.id,
-        message: 'Hello'
-      });
-
-      expect(result.assistantMessage.content).toContain('Placeholder reply');
-      expect(result.assistantMessage.content).toContain('You said:');
-      expect(result.assistantMessage.content).toContain('Connect the ConversationService to a real LLM');
+      expect(mockOpenAIService.generateResponse).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ role: 'user', content: 'First' }),
+          expect.objectContaining({ role: 'assistant', content: 'Mocked OpenAI response' }),
+          expect.objectContaining({ role: 'user', content: 'Second' })
+        ])
+      );
     });
   });
 
   describe('handleUserMessageStreaming', () => {
-    it('should throw SessionNotFoundError for non-existent session', () => {
-      expect(() => {
-        conversationService.handleUserMessageStreaming({
-          sessionId: 'non-existent',
-          message: 'Hello'
-        });
-      }).toThrow(SessionNotFoundError);
+    it('should throw SessionNotFoundError for non-existent session', async () => {
+      const generator = conversationService.handleUserMessageStreaming({
+        sessionId: 'non-existent',
+        message: 'Hello'
+      });
+
+      await expect(generator.next()).rejects.toThrow(SessionNotFoundError);
     });
 
-    it('should return assistant message and chunks', () => {
+    it('should yield chunks from OpenAI streaming', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
-      const result = conversationService.handleUserMessageStreaming({
+      const generator = conversationService.handleUserMessageStreaming({
         sessionId: session.id,
         message: 'Hello'
       });
 
-      expect(result.sessionId).toBe(session.id);
-      expect(result.assistantMessage).toBeDefined();
-      expect(result.chunks).toBeDefined();
-      expect(Array.isArray(result.chunks)).toBe(true);
-    });
-
-    it('should split response into sentence chunks', () => {
-      const session = sessionStore.createSession({ tenantId: 'tenant-1' });
-
-      const result = conversationService.handleUserMessageStreaming({
-        sessionId: session.id,
-        message: 'Hello'
-      });
-
-      expect(result.chunks.length).toBeGreaterThan(1);
-
-      // Verify chunks are non-empty strings
-      for (const chunk of result.chunks) {
-        expect(chunk).toBeTruthy();
-        expect(typeof chunk).toBe('string');
+      const events: Array<{ delta?: string; type?: string }> = [];
+      for await (const event of generator) {
+        if ('type' in event && event.type === 'completed') {
+          events.push({ type: 'completed' });
+        } else if ('delta' in event) {
+          events.push({ delta: event.delta });
+        }
       }
 
-      // Verify chunks contain parts of the original message
-      const fullChunks = result.chunks.join(' ');
-      expect(fullChunks).toContain('Placeholder reply');
-      expect(fullChunks).toContain('You said');
-      expect(fullChunks).toContain('Connect the ConversationService');
+      expect(events).toEqual([
+        { delta: 'Mocked ' },
+        { delta: 'streaming ' },
+        { delta: 'response' },
+        { type: 'completed' }
+      ]);
     });
 
-    it('should store messages in session', () => {
+    it('should call OpenAI streaming service with conversation history', async () => {
       const session = sessionStore.createSession({ tenantId: 'tenant-1' });
 
-      conversationService.handleUserMessageStreaming({
+      const generator = conversationService.handleUserMessageStreaming({
+        sessionId: session.id,
+        message: 'Hello'
+      });
+
+      // Consume generator
+      // biome-ignore lint/correctness/noUnusedVariables: need to consume generator
+      for await (const _chunk of generator) {
+        // consume
+      }
+
+      expect(mockOpenAIService.generateStreamingResponse).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            role: 'user',
+            content: 'Hello'
+          })
+        ])
+      );
+    });
+
+    it('should store messages in session after streaming completes', async () => {
+      const session = sessionStore.createSession({ tenantId: 'tenant-1' });
+
+      const generator = conversationService.handleUserMessageStreaming({
         sessionId: session.id,
         message: 'Hello streaming'
       });
 
+      // Consume all chunks
+      // biome-ignore lint/correctness/noUnusedVariables: need to consume generator
+      for await (const _chunk of generator) {
+        // consume
+      }
+
       const updatedSession = sessionStore.getSession(session.id);
       expect(updatedSession?.messages).toHaveLength(2);
+      expect(updatedSession?.messages[0].role).toBe('user');
       expect(updatedSession?.messages[0].content).toBe('Hello streaming');
+      expect(updatedSession?.messages[1].role).toBe('assistant');
+      expect(updatedSession?.messages[1].content).toBe('Mocked streaming response');
+    });
+
+    it('should accumulate full text from chunks', async () => {
+      const session = sessionStore.createSession({ tenantId: 'tenant-1' });
+
+      const generator = conversationService.handleUserMessageStreaming({
+        sessionId: session.id,
+        message: 'Test'
+      });
+
+      let fullText = '';
+      for await (const event of generator) {
+        if ('delta' in event) {
+          fullText += event.delta;
+        }
+      }
+
+      expect(fullText).toBe('Mocked streaming response');
+
+      const updatedSession = sessionStore.getSession(session.id);
+      expect(updatedSession?.messages[1].content).toBe('Mocked streaming response');
     });
   });
 

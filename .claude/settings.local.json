@@ -16,7 +16,11 @@
       "Bash(pnpm test:*)",
       "Bash(pnpm --filter @tiny-chatbot/server test)",
       "Bash(curl:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(pnpm why:*)",
+      "Bash(pnpm outdated:*)",
+      "Bash(pnpm view:*)",
+      "Bash(pnpm install:*)"
     ],
     "deny": [],
     "ask": []

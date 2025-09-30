@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import type { ChatMessage, ChatSession, SessionStore } from '../repositories/SessionStore.js';
+import type { OpenAIService, StreamChunk } from './OpenAIService.js';
 
 export interface HandleMessageInput {
   sessionId: string;
@@ -11,10 +12,6 @@ export interface HandleMessageResult {
   assistantMessage: ChatMessage;
 }
 
-export interface StreamMessageResult extends HandleMessageResult {
-  chunks: string[];
-}
-
 export class SessionNotFoundError extends Error {
   constructor(sessionId: string) {
     super(`Session ${sessionId} was not found`);
@@ -23,9 +20,12 @@ export class SessionNotFoundError extends Error {
 }
 
 export class ConversationService {
-  constructor(private readonly sessionStore: SessionStore) {}
+  constructor(
+    private readonly sessionStore: SessionStore,
+    private readonly openAIService: OpenAIService
+  ) {}
 
-  handleUserMessage(input: HandleMessageInput): HandleMessageResult {
+  async handleUserMessage(input: HandleMessageInput): Promise<HandleMessageResult> {
     const session = this.sessionStore.getSession(input.sessionId);
 
     if (!session) {
@@ -35,7 +35,7 @@ export class ConversationService {
     const userMessage = this.buildMessage('user', input.message);
     const updatedSession = this.sessionStore.appendMessage(session.id, userMessage);
 
-    const assistantMessage = this.buildAssistantMessage(input.message, updatedSession);
+    const assistantMessage = await this.buildAssistantMessage(updatedSession);
     this.sessionStore.appendMessage(session.id, assistantMessage);
 
     return {
@@ -44,15 +44,30 @@ export class ConversationService {
     };
   }
 
-  handleUserMessageStreaming(input: HandleMessageInput): StreamMessageResult {
-    const { assistantMessage } = this.handleUserMessage(input);
-    const chunks = this.generateChunks(assistantMessage);
+  async *handleUserMessageStreaming(
+    input: HandleMessageInput
+  ): AsyncGenerator<StreamChunk | { type: 'completed'; assistantMessage: ChatMessage }, void, undefined> {
+    const session = this.sessionStore.getSession(input.sessionId);
 
-    return {
-      sessionId: input.sessionId,
-      assistantMessage,
-      chunks
-    };
+    if (!session) {
+      throw new SessionNotFoundError(input.sessionId);
+    }
+
+    const userMessage = this.buildMessage('user', input.message);
+    const updatedSession = this.sessionStore.appendMessage(session.id, userMessage);
+
+    const generator = this.openAIService.generateStreamingResponse(updatedSession.messages);
+    let fullText = '';
+
+    for await (const chunk of generator) {
+      fullText += chunk.delta;
+      yield chunk;
+    }
+
+    const assistantMessage = this.buildMessage('assistant', fullText);
+    this.sessionStore.appendMessage(session.id, assistantMessage);
+
+    yield { type: 'completed', assistantMessage };
   }
 
   private buildMessage(role: ChatMessage['role'], content: string): ChatMessage {
@@ -64,22 +79,8 @@ export class ConversationService {
     };
   }
 
-  private buildAssistantMessage(userInput: string, session: ChatSession): ChatMessage {
-    const assistantCount = session.messages.filter((msg) => msg.role === 'assistant').length + 1;
-    const content = [
-      `Placeholder reply #${assistantCount} for session ${session.id}.`,
-      `You said: "${userInput}".`,
-      'Connect the ConversationService to a real LLM pipeline to replace this canned response.'
-    ].join(' ');
-
+  private async buildAssistantMessage(session: ChatSession): Promise<ChatMessage> {
+    const content = await this.openAIService.generateResponse(session.messages);
     return this.buildMessage('assistant', content);
-  }
-
-  private generateChunks(message: ChatMessage): string[] {
-    const sentences = message.content.split('. ').filter((part) => part.length > 0);
-    return sentences.map((sentence, index) => {
-      const suffix = index === sentences.length - 1 ? '' : '.';
-      return `${sentence}${suffix}`;
-    });
   }
 }

@@ -16,10 +16,11 @@ const configSchema = z.object({
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-  // Future: LLM settings (placeholders for when integrating real LLM)
-  // LLM_API_KEY: z.string().optional(),
-  // LLM_MODEL: z.string().optional(),
-  // LLM_MAX_TOKENS: z.coerce.number().optional(),
+  // OpenAI settings
+  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY is required'),
+  OPENAI_MODEL: z.string().default('gpt-5'),
+  OPENAI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().optional(),
+  OPENAI_TEMPERATURE: z.coerce.number().min(0).max(2).default(1.0),
 });
 
 export type Config = z.infer<typeof configSchema>;

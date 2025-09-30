@@ -19,18 +19,23 @@ export async function registerStreamRoute(app: FastifyInstance, conversationServ
     reply.raw.setHeader('Connection', 'keep-alive');
 
     try {
-      const result = conversationService.handleUserMessageStreaming({
+      const generator = conversationService.handleUserMessageStreaming({
         sessionId: parseResult.data.sessionId,
         message: parseResult.data.message
       });
 
-      for (const chunk of result.chunks) {
-        reply.raw.write(`data: ${JSON.stringify({ type: 'chunk', data: chunk })}\n\n`);
+      for await (const event of generator) {
+        if ('type' in event && event.type === 'completed') {
+          // Final completion event with assistant message
+          reply.raw.write(
+            `data: ${JSON.stringify({ type: 'completed', message: event.assistantMessage })}\n\n`
+          );
+        } else {
+          // Stream chunk
+          reply.raw.write(`data: ${JSON.stringify({ type: 'chunk', data: event.delta })}\n\n`);
+        }
       }
 
-      reply.raw.write(
-        `data: ${JSON.stringify({ type: 'completed', message: result.assistantMessage })}\n\n`
-      );
       reply.raw.end();
       return reply;
     } catch (error) {

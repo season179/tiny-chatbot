@@ -15,7 +15,7 @@ export async function registerChatRoutes(app: FastifyInstance, conversationServi
     }
 
     try {
-      const { assistantMessage, sessionId } = conversationService.handleUserMessage({
+      const { assistantMessage, sessionId } = await conversationService.handleUserMessage({
         sessionId: parseResult.data.sessionId,
         message: parseResult.data.message
       });

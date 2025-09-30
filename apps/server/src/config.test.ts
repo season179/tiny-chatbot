@@ -7,7 +7,7 @@ describe('Config', () => {
   beforeEach(() => {
     // Reset config cache and environment for each test
     resetConfig();
-    process.env = { ...originalEnv };
+    process.env = { ...originalEnv, OPENAI_API_KEY: 'sk-test-key' };
   });
 
   afterEach(() => {

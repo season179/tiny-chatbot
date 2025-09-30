@@ -5,6 +5,7 @@ import { loadConfig, getConfig } from './config.js';
 import { registerRoutes } from './registerRoutes.js';
 import { InMemorySessionStore } from './repositories/InMemorySessionStore.js';
 import { ConversationService } from './services/ConversationService.js';
+import { OpenAIService } from './services/OpenAIService.js';
 
 loadEnv();
 loadConfig();
@@ -29,7 +30,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   const sessionStore = new InMemorySessionStore();
-  const conversationService = new ConversationService(sessionStore);
+  const openAIService = new OpenAIService(config);
+  const conversationService = new ConversationService(sessionStore, openAIService);
 
   await registerRoutes(app, { sessionStore, conversationService });
 

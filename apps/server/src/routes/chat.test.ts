@@ -1,5 +1,30 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { buildServer } from '../server.js';
+
+// Mock OpenAI SDK before importing server
+vi.mock('openai', () => {
+  const mockCreate = vi.fn().mockResolvedValue({
+    output: [
+      {
+        type: 'message',
+        content: [
+          {
+            type: 'output_text',
+            text: 'Mocked OpenAI response'
+          }
+        ]
+      }
+    ]
+  });
+
+  return {
+    default: vi.fn().mockImplementation(() => ({
+      responses: {
+        create: mockCreate
+      }
+    }))
+  };
+});
 
 describe('POST /api/chat', () => {
   it('should return assistant message for valid request', async () => {
@@ -28,7 +53,7 @@ describe('POST /api/chat', () => {
     expect(body.sessionId).toBe(sessionId);
     expect(body.message).toBeDefined();
     expect(body.message.role).toBe('assistant');
-    expect(body.message.content).toContain('Hello, world!');
+    expect(body.message.content).toBe('Mocked OpenAI response');
     expect(body.message.id).toBeTruthy();
     expect(body.message.createdAt).toBeTruthy();
 
@@ -151,7 +176,7 @@ describe('POST /api/chat', () => {
       url: '/api/chat',
       payload: { sessionId, message: 'First message' }
     });
-    expect(response1.json().message.content).toContain('#1');
+    expect(response1.json().message.content).toBe('Mocked OpenAI response');
 
     // Second message
     const response2 = await app.inject({
@@ -159,7 +184,7 @@ describe('POST /api/chat', () => {
       url: '/api/chat',
       payload: { sessionId, message: 'Second message' }
     });
-    expect(response2.json().message.content).toContain('#2');
+    expect(response2.json().message.content).toBe('Mocked OpenAI response');
 
     await app.close();
   });

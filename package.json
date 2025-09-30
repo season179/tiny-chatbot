@@ -14,5 +14,10 @@
     "@types/node": "^24.5.2",
     "turbo": "^2.5.8",
     "typescript": "^5.3.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "source-map@0.8.0-beta.0": "npm:source-map@^0.7.4"
+    }
   }
 }

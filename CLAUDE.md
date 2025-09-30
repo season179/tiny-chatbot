@@ -1,0 +1,1 @@
+Refer to AGENTS.md file. Treat it as you would treat this file.

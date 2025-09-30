@@ -1,5 +1,37 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildServer } from '../server.js';
+
+// Mock OpenAI SDK before importing server
+vi.mock('openai', () => {
+  const mockCreate = vi.fn().mockImplementation(({ stream }) => {
+    if (stream) {
+      return {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'response.output_text.delta', delta: 'Mocked ' };
+          yield { type: 'response.output_text.delta', delta: 'streaming ' };
+          yield { type: 'response.output_text.delta', delta: 'response' };
+          yield { type: 'response.completed' };
+        }
+      };
+    }
+    return Promise.resolve({
+      output: [
+        {
+          type: 'message',
+          content: [{ type: 'output_text', text: 'Mocked response' }]
+        }
+      ]
+    });
+  });
+
+  return {
+    default: vi.fn().mockImplementation(() => ({
+      responses: {
+        create: mockCreate
+      }
+    }))
+  };
+});
 
 describe('POST /api/chat/stream', () => {
   it('should stream response chunks for valid request', async () => {
@@ -40,7 +72,7 @@ describe('POST /api/chat/stream', () => {
     expect(chunkEvents.length).toBeGreaterThan(0);
     expect(completedEvent).toBeDefined();
     expect(completedEvent?.message).toBeDefined();
-    expect(completedEvent?.message.content).toContain('Hello streaming!');
+    expect(completedEvent?.message.content).toBe('Mocked streaming response');
 
     await app.close();
   });

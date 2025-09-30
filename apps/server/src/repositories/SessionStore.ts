@@ -1,6 +1,12 @@
-import type { ChatRole, ChatMessage, ChatSession } from '@tiny-chatbot/shared';
+import type {
+  ChatRole,
+  ChatMessage,
+  ChatSession,
+  ChatToolMessage,
+  ChatTextMessage
+} from '@tiny-chatbot/shared';
 
-export type { ChatRole, ChatMessage, ChatSession };
+export type { ChatRole, ChatMessage, ChatSession, ChatToolMessage, ChatTextMessage };
 
 export interface CreateSessionInput {
   tenantId: string;

@@ -3,6 +3,8 @@ import { eq } from 'drizzle-orm';
 import {
   ChatMessage,
   ChatSession,
+  ChatTextMessage,
+  ChatToolMessage,
   CreateSessionInput,
   SessionStore
 } from './SessionStore.js';
@@ -61,12 +63,7 @@ export class SqliteSessionStore implements SessionStore {
       userId: sessionRow.userId ?? undefined,
       traits: sessionRow.traits ? JSON.parse(sessionRow.traits) : undefined,
       createdAt: sessionRow.createdAt,
-      messages: messageRows.map((msg) => ({
-        id: msg.id,
-        role: msg.role as ChatMessage['role'],
-        content: msg.content,
-        createdAt: msg.createdAt
-      }))
+      messages: messageRows.map((msg) => reconstructMessage(msg))
     };
 
     return session;
@@ -87,13 +84,35 @@ export class SqliteSessionStore implements SessionStore {
     }
 
     // Insert message
-    db.insert(messages).values({
+    const insertValues: typeof messages.$inferInsert = {
       id: message.id,
       sessionId,
       role: message.role,
-      content: message.content,
+      content: '',
+      toolName: null,
+      toolCallId: null,
+      arguments: null,
+      result: null,
+      metadata: stringifyOrNull(message.metadata),
       createdAt: message.createdAt
-    }).run();
+    };
+
+    if (message.role === 'tool') {
+      insertValues.toolName = message.toolName;
+      insertValues.toolCallId = message.toolCallId ?? null;
+      insertValues.arguments = stringifyOrNull(message.arguments);
+      insertValues.result = stringifyOrNull(message.result);
+      insertValues.content = message.content ?? '';
+    } else {
+      if (message.content === undefined) {
+        throw new Error(
+          `Message ${message.id} with role ${message.role} is missing content`
+        );
+      }
+      insertValues.content = message.content;
+    }
+
+    db.insert(messages).values(insertValues).run();
 
     // Return updated session
     const updatedSession = this.getSession(sessionId);
@@ -102,5 +121,61 @@ export class SqliteSessionStore implements SessionStore {
     }
 
     return updatedSession;
+  }
+}
+
+type MessageRow = typeof messages.$inferSelect;
+
+function reconstructMessage(row: MessageRow): ChatMessage {
+  const metadata = parseJsonField<Record<string, unknown>>(row.metadata, 'metadata', row.id);
+
+  if (row.role === 'tool') {
+    if (!row.toolName) {
+      throw new Error(`Tool message ${row.id} is missing a tool name`);
+    }
+
+    const toolMessage: ChatToolMessage = {
+      id: row.id,
+      role: 'tool',
+      toolName: row.toolName,
+      toolCallId: row.toolCallId ?? undefined,
+      arguments: parseJsonField<Record<string, unknown>>(row.arguments, 'arguments', row.id),
+      result: parseJsonField<ChatToolMessage['result']>(row.result, 'result', row.id),
+      content: row.content === '' ? undefined : row.content,
+      metadata,
+      createdAt: row.createdAt
+    };
+
+    return toolMessage;
+  }
+
+  const textMessage: ChatTextMessage = {
+    id: row.id,
+    role: row.role as ChatTextMessage['role'],
+    content: row.content ?? '',
+    metadata,
+    createdAt: row.createdAt
+  };
+
+  return textMessage;
+}
+
+function stringifyOrNull(value: unknown): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  return JSON.stringify(value);
+}
+
+function parseJsonField<T>(value: string | null, field: string, messageId: string): T | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse ${field} for message ${messageId}: ${errorMessage}`);
   }
 }

@@ -23,6 +23,24 @@ const configSchema = z.object({
 
   // Database settings
   DATABASE_PATH: z.string().default('./data/sessions.db'),
+
+  // Shell sandbox settings
+  SHELL_SANDBOX_ENABLED: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
+  SHELL_SANDBOX_ALLOWED_COMMANDS: z
+    .string()
+    .default('cat,ls,rg,head,tail')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((command) => command.trim())
+        .filter((command) => command.length > 0)
+    ),
+  SHELL_SANDBOX_WORKING_DIR: z.string().default('./'),
+  SHELL_SANDBOX_MAX_OUTPUT_BYTES: z.coerce.number().int().positive().default(16384),
+  SHELL_SANDBOX_TIMEOUT_MS: z.coerce.number().int().positive().default(5000)
 });
 
 export type Config = z.infer<typeof configSchema>;

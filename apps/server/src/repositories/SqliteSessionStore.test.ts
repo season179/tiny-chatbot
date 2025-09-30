@@ -168,6 +168,32 @@ describe('SqliteSessionStore', () => {
       expect(retrieved?.messages[0]).toEqual(message1);
       expect(retrieved?.messages[1]).toEqual(message2);
     });
+
+    it('should persist tool invocation payloads', () => {
+      const session = store.createSession({ tenantId: 'tenant-123' });
+      const toolMessage: ChatMessage = {
+        id: 'msg-tool',
+        role: 'tool',
+        toolName: 'shell/read_file',
+        toolCallId: 'call-1',
+        arguments: { path: 'README.md' },
+        result: {
+          status: 'success',
+          stdout: 'file contents',
+          exitCode: 0,
+          durationMs: 12
+        },
+        metadata: { attempt: 1 },
+        createdAt: new Date().toISOString()
+      };
+
+      const updated = store.appendMessage(session.id, toolMessage);
+      expect(updated.messages).toHaveLength(1);
+      expect(updated.messages[0]).toEqual(toolMessage);
+
+      const fetched = store.getSession(session.id);
+      expect(fetched?.messages[0]).toEqual(toolMessage);
+    });
   });
 
   describe('persistence', () => {

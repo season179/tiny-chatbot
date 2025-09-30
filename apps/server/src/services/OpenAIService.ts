@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
+import type { ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses';
 import type { Config } from '../config.js';
-import type { ChatMessage } from '../repositories/SessionStore.js';
+import type { ChatMessage, ChatToolMessage } from '../repositories/SessionStore.js';
 import { retryWithBackoff, type RetryOptions } from '../utils/retry.js';
 
 export interface OpenAIGenerateOptions {
@@ -85,7 +86,7 @@ export class OpenAIService {
           await this.client.responses.create({
             model: this.model,
             input,
-            reasoning: { effort: 'low' },
+            reasoning: { effort: 'minimal' },
             text: { verbosity: 'low' },
             max_output_tokens: options.maxOutputTokens ?? this.maxOutputTokens
           }),
@@ -147,7 +148,7 @@ export class OpenAIService {
           await this.client.responses.create({
             model: this.model,
             input,
-            reasoning: { effort: 'low' },
+            reasoning: { effort: 'minimal' },
             text: { verbosity: 'low' },
             max_output_tokens: options.maxOutputTokens ?? this.maxOutputTokens,
             stream: true
@@ -200,12 +201,10 @@ export class OpenAIService {
     }
   }
 
-  private convertMessagesToOpenAIFormat(messages: ChatMessage[]): Array<{
-    role: 'user' | 'assistant' | 'system' | 'developer';
-    content: Array<{ type: 'input_text'; text: string }>;
-    type: 'message';
-  }> {
-    return messages.map((msg) => {
+  private convertMessagesToOpenAIFormat(
+    messages: ChatMessage[]
+  ): ResponseCreateParamsNonStreaming['input'] {
+    const formatted = messages.map((msg) => {
       // Map our role types to OpenAI's role types
       let role: 'user' | 'assistant' | 'system';
       if (msg.role === 'system') {
@@ -213,20 +212,75 @@ export class OpenAIService {
       } else if (msg.role === 'user') {
         role = 'user';
       } else {
+        // Treat assistant and tool outputs as assistant role for the OpenAI Responses API
         role = 'assistant';
       }
+
+      const contentType = role === 'assistant' ? 'output_text' : 'input_text';
 
       return {
         role,
         type: 'message' as const,
         content: [
           {
-            type: 'input_text' as const,
-            text: msg.content
+            type: contentType,
+            text: this.renderMessageContent(msg)
           }
         ]
       };
     });
+
+    return formatted as ResponseCreateParamsNonStreaming['input'];
+  }
+
+  private renderMessageContent(message: ChatMessage): string {
+    if (message.role === 'tool') {
+      return this.renderToolMessageContent(message);
+    }
+
+    return message.content;
+  }
+
+  private renderToolMessageContent(message: ChatToolMessage): string {
+    if (message.content) {
+      return message.content;
+    }
+
+    const segments: string[] = [`Tool ${message.toolName} result:`];
+
+    if (message.result?.status) {
+      segments.push(`status: ${message.result.status}`);
+    }
+
+    if (message.result?.stdout) {
+      segments.push(`stdout:\n${message.result.stdout}`);
+    }
+
+    if (message.result?.stderr) {
+      segments.push(`stderr:\n${message.result.stderr}`);
+    }
+
+    if (message.result?.errorMessage) {
+      segments.push(`error:\n${message.result.errorMessage}`);
+    }
+
+    if (message.result?.exitCode !== undefined) {
+      segments.push(`exitCode: ${message.result.exitCode}`);
+    }
+
+    if (message.result?.truncated) {
+      segments.push('output was truncated');
+    }
+
+    if (message.result?.durationMs !== undefined) {
+      segments.push(`durationMs: ${message.result.durationMs}`);
+    }
+
+    if (message.result?.metadata) {
+      segments.push(`metadata: ${JSON.stringify(message.result.metadata)}`);
+    }
+
+    return segments.join('\n\n');
   }
 
   private extractTextFromResponse(response: OpenAI.Responses.Response): string {
@@ -317,19 +371,10 @@ export class OpenAIService {
     const startTime = Date.now();
     try {
       // Make a minimal request to verify API connectivity
-      const testMessage: ChatMessage = {
-        id: 'health-check',
-        role: 'user',
-        content: 'ping',
-        createdAt: new Date().toISOString()
-      };
-
-      // Don't use retry logic for health checks to get fast feedback
-      const input = this.convertMessagesToOpenAIFormat([testMessage]);
-
       await this.client.responses.create({
         model: this.model,
-        input,
+        input: 'ping',
+        text: { verbosity: 'low' },
         max_output_tokens: 5 // Minimal response
       });
 

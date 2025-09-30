@@ -15,8 +15,13 @@ export const messages = sqliteTable(
     sessionId: text('session_id')
       .notNull()
       .references(() => sessions.id, { onDelete: 'cascade' }),
-    role: text('role').notNull(), // 'system' | 'user' | 'assistant'
+    role: text('role').notNull(), // 'system' | 'user' | 'assistant' | 'tool'
     content: text('content').notNull(),
+    toolName: text('tool_name'),
+    toolCallId: text('tool_call_id'),
+    arguments: text('arguments'), // JSON stringified tool arguments
+    result: text('result'), // JSON stringified tool results
+    metadata: text('metadata'), // JSON stringified message metadata
     createdAt: text('created_at').notNull()
   },
   (table) => ({

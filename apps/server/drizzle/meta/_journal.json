@@ -8,6 +8,13 @@
       "when": 1759213480149,
       "tag": "0000_amusing_rafael_vega",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759221977453,
+      "tag": "0001_agentic_tool_messages",
+      "breakpoints": true
     }
   ]
 }

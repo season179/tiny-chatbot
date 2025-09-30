@@ -83,11 +83,24 @@ describe('OpenAIService', () => {
       const result = await service.generateResponse(messages);
 
       expect(result).toBe('Hello! How can I help you?');
-      expect(mockCreate).toHaveBeenCalledWith({
-        model: 'gpt-5',
-        input: [{ role: 'user', content: 'Hello' }],
-        max_output_tokens: undefined
-      });
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-5',
+          input: [
+            expect.objectContaining({
+              role: 'user',
+              type: 'message',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'Hello'
+                }
+              ]
+            })
+          ],
+          max_output_tokens: undefined
+        })
+      );
     });
 
     it('should handle multiple messages in conversation', async () => {
@@ -130,15 +143,44 @@ describe('OpenAIService', () => {
 
       await service.generateResponse(messages);
 
-      expect(mockCreate).toHaveBeenCalledWith({
-        model: 'gpt-5',
-        input: [
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: 'Hi there!' },
-          { role: 'user', content: 'How are you?' }
-        ],
-        max_output_tokens: undefined
-      });
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-5',
+          input: [
+            expect.objectContaining({
+              role: 'user',
+              type: 'message',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'Hello'
+                }
+              ]
+            }),
+            expect.objectContaining({
+              role: 'assistant',
+              type: 'message',
+              content: [
+                {
+                  type: 'output_text',
+                  text: 'Hi there!'
+                }
+              ]
+            }),
+            expect.objectContaining({
+              role: 'user',
+              type: 'message',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'How are you?'
+                }
+              ]
+            })
+          ],
+          max_output_tokens: undefined
+        })
+      );
     });
 
     it('should throw OpenAIError when API call fails', async () => {
@@ -205,11 +247,24 @@ describe('OpenAIService', () => {
         maxOutputTokens: 100
       });
 
-      expect(mockCreate).toHaveBeenCalledWith({
-        model: 'gpt-5',
-        input: [{ role: 'user', content: 'Hello' }],
-        max_output_tokens: 100
-      });
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-5',
+          input: [
+            expect.objectContaining({
+              role: 'user',
+              type: 'message',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'Hello'
+                }
+              ]
+            })
+          ],
+          max_output_tokens: 100
+        })
+      );
     });
   });
 
@@ -242,12 +297,25 @@ describe('OpenAIService', () => {
       }
 
       expect(chunks).toEqual(['Hello', ' there!']);
-      expect(mockCreate).toHaveBeenCalledWith({
-        model: 'gpt-5',
-        input: [{ role: 'user', content: 'Hello' }],
-        max_output_tokens: undefined,
-        stream: true
-      });
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-5',
+          input: [
+            expect.objectContaining({
+              role: 'user',
+              type: 'message',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'Hello'
+                }
+              ]
+            })
+          ],
+          max_output_tokens: undefined,
+          stream: true
+        })
+      );
     });
 
     it('should return full text after streaming completes', async () => {

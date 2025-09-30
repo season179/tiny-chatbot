@@ -3,3 +3,4 @@
 
 // Set required environment variables for tests
 process.env.OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'sk-test-key-for-tests';
+process.env.DATABASE_PATH = ':memory:';

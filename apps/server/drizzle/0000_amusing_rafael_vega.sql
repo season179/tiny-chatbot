@@ -1,4 +1,4 @@
-CREATE TABLE `messages` (
+CREATE TABLE IF NOT EXISTS `messages` (
 	`id` text PRIMARY KEY NOT NULL,
 	`session_id` text NOT NULL,
 	`role` text NOT NULL,
@@ -7,8 +7,8 @@ CREATE TABLE `messages` (
 	FOREIGN KEY (`session_id`) REFERENCES `sessions`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `messages_session_id_idx` ON `messages` (`session_id`);--> statement-breakpoint
-CREATE TABLE `sessions` (
+CREATE INDEX IF NOT EXISTS `messages_session_id_idx` ON `messages` (`session_id`);--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`tenant_id` text NOT NULL,
 	`user_id` text,

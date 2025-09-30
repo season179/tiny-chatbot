@@ -8,6 +8,11 @@ describe('Config', () => {
     // Reset config cache and environment for each test
     resetConfig();
     process.env = { ...originalEnv, OPENAI_API_KEY: 'sk-test-key' };
+    delete process.env.SHELL_SANDBOX_ENABLED;
+    delete process.env.SHELL_SANDBOX_ALLOWED_COMMANDS;
+    delete process.env.SHELL_SANDBOX_WORKING_DIR;
+    delete process.env.SHELL_SANDBOX_MAX_OUTPUT_BYTES;
+    delete process.env.SHELL_SANDBOX_TIMEOUT_MS;
   });
 
   afterEach(() => {
@@ -33,6 +38,17 @@ describe('Config', () => {
       expect(config.CORS_ORIGIN).toBe('*');
       expect(config.CORS_CREDENTIALS).toBe(false);
       expect(config.LOG_LEVEL).toBe('info');
+      expect(config.SHELL_SANDBOX_ENABLED).toBe(false);
+      expect(config.SHELL_SANDBOX_ALLOWED_COMMANDS).toEqual([
+        'cat',
+        'ls',
+        'rg',
+        'head',
+        'tail'
+      ]);
+      expect(config.SHELL_SANDBOX_WORKING_DIR).toBe('./');
+      expect(config.SHELL_SANDBOX_MAX_OUTPUT_BYTES).toBe(16384);
+      expect(config.SHELL_SANDBOX_TIMEOUT_MS).toBe(5000);
     });
 
     it('should load config from environment variables', () => {
@@ -42,6 +58,11 @@ describe('Config', () => {
       process.env.CORS_ORIGIN = 'https://example.com';
       process.env.CORS_CREDENTIALS = 'true';
       process.env.LOG_LEVEL = 'debug';
+      process.env.SHELL_SANDBOX_ENABLED = 'true';
+      process.env.SHELL_SANDBOX_ALLOWED_COMMANDS = 'ls,cat';
+      process.env.SHELL_SANDBOX_WORKING_DIR = '/tmp';
+      process.env.SHELL_SANDBOX_MAX_OUTPUT_BYTES = '4096';
+      process.env.SHELL_SANDBOX_TIMEOUT_MS = '2500';
 
       const config = loadConfig();
 
@@ -51,6 +72,11 @@ describe('Config', () => {
       expect(config.CORS_ORIGIN).toBe('https://example.com');
       expect(config.CORS_CREDENTIALS).toBe(true);
       expect(config.LOG_LEVEL).toBe('debug');
+      expect(config.SHELL_SANDBOX_ENABLED).toBe(true);
+      expect(config.SHELL_SANDBOX_ALLOWED_COMMANDS).toEqual(['ls', 'cat']);
+      expect(config.SHELL_SANDBOX_WORKING_DIR).toBe('/tmp');
+      expect(config.SHELL_SANDBOX_MAX_OUTPUT_BYTES).toBe(4096);
+      expect(config.SHELL_SANDBOX_TIMEOUT_MS).toBe(2500);
     });
 
     it('should coerce PORT to number', () => {

@@ -166,12 +166,6 @@ export class OpenAIService {
     try {
       const input = this.convertMessagesToOpenAIFormat(messages);
 
-      this.logger?.info('OpenAI streaming API request initiated', {
-        model: this.model,
-        messageCount: messages.length
-      });
-
-      const streamRequestStart = Date.now();
       const stream = await retryWithBackoff(
         async () =>
           await this.client.responses.create({
@@ -187,20 +181,14 @@ export class OpenAIService {
         this.retryOptions
       );
 
-      const streamCreated = Date.now();
-      this.logger?.info('OpenAI stream created', {
-        model: this.model,
-        durationMs: streamCreated - streamRequestStart
-      });
-
       let fullText = '';
       let firstChunkReceived = false;
 
       for await (const event of stream) {
         if (event.type === 'response.output_text.delta') {
           if (!firstChunkReceived) {
-            const ttft = Date.now() - streamRequestStart;
-            this.logger?.info('First chunk received (TTFT)', {
+            const ttft = Date.now() - startTime;
+            this.logger?.info('Stream started', {
               model: this.model,
               ttftMs: ttft
             });
@@ -214,7 +202,7 @@ export class OpenAIService {
       }
 
       const duration = Date.now() - startTime;
-      this.logger?.info('OpenAI streaming API request completed', {
+      this.logger?.info('Stream completed', {
         model: this.model,
         durationMs: duration,
         responseLength: fullText.length

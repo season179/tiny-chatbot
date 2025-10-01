@@ -8,13 +8,6 @@ interface MessageListProps {
 
 export function MessageList({ messages, loading }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const renderTimeRef = useRef(Date.now());
-
-  // Log render timing
-  const now = Date.now();
-  const timeSinceLastRender = now - renderTimeRef.current;
-  renderTimeRef.current = now;
-  console.log(`[MessageList] Rendered at ${new Date().toISOString()} (+${timeSinceLastRender}ms since last render), ${messages.length} messages`);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

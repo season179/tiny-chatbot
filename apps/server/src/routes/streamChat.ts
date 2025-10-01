@@ -26,42 +26,30 @@ export async function registerStreamRoute(app: FastifyInstance, conversationServ
     reply.raw.setHeader('Connection', 'keep-alive');
 
     try {
-      const streamStart = Date.now();
-      let chunkCount = 0;
-      app.log.info(`[StreamRoute ${streamStart}] Starting to consume conversation service generator...`);
-
       const generator = conversationService.handleUserMessageStreaming({
         sessionId: parseResult.data.sessionId,
         message: parseResult.data.message
       });
 
       for await (const event of generator) {
-        const elapsed = Date.now() - streamStart;
-
         if ('type' in event && event.type === 'completed') {
           // Final completion event with assistant message
-          app.log.info(`[StreamRoute +${elapsed}ms] Sending completion event (received ${chunkCount} chunks total)`);
           reply.raw.write(
             `data: ${JSON.stringify({ type: 'completed', message: event.assistantMessage })}\n\n`
           );
         } else {
           // Stream chunk
-          chunkCount++;
-          const chunkPreview = event.delta.substring(0, 30).replace(/\n/g, '\\n');
-          app.log.info(`[StreamRoute +${elapsed}ms] Chunk #${chunkCount} received, sending to client: "${chunkPreview}..."`);
-
           const writeStart = Date.now();
           reply.raw.write(`data: ${JSON.stringify({ type: 'chunk', data: event.delta })}\n\n`);
           const writeDuration = Date.now() - writeStart;
 
-          if (writeDuration > 5) {
-            app.log.warn(`[StreamRoute +${elapsed}ms] Slow write detected: ${writeDuration}ms`);
+          // Warn if write operation is unexpectedly slow
+          if (writeDuration > 10) {
+            app.log.warn(`Slow stream write detected: ${writeDuration}ms`);
           }
         }
       }
 
-      const totalDuration = Date.now() - streamStart;
-      app.log.info(`[StreamRoute +${totalDuration}ms] Stream completed, ending response`);
       reply.raw.end();
       return reply;
     } catch (error) {

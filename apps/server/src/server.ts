@@ -118,13 +118,23 @@ export async function startServer(options: ServerOptions = {}): Promise<FastifyI
 if (import.meta.url === `file://${process.argv[1]}`) {
   const app = await startServer();
 
+  // Track if we're shutting down to prevent multiple shutdown attempts
+  let isShuttingDown = false;
+
   // Handle graceful shutdown on SIGINT (Ctrl+C) and SIGTERM
   const gracefulShutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
     app.log.info(`${signal} received, starting graceful shutdown...`);
     
     try {
+      // Close the Fastify server (this triggers the onClose hook which closes the database)
       await app.close();
       app.log.info('Server closed gracefully');
+      
+      // Fastify's logger (Pino) keeps the event loop alive, so we need to explicitly exit
+      // This is the recommended pattern from Fastify documentation
       process.exit(0);
     } catch (error) {
       app.log.error({ err: error }, 'Error during shutdown');
@@ -132,6 +142,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
   };
 
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
 }

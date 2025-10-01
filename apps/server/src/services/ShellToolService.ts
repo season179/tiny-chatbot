@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { ToolsConfig } from '../config/toolsConfig.js';
 import type {
@@ -22,10 +23,53 @@ export class ShellToolError extends Error {
 export class ShellToolService {
   private readonly config: ToolsConfig;
   private readonly logger?: ShellToolLogger;
+  private normalizedWorkingDir: string;
 
   constructor(config: ToolsConfig, logger?: ShellToolLogger) {
     this.config = config;
     this.logger = logger;
+    
+    // Normalize path (will be validated later if sandbox is enabled)
+    this.normalizedWorkingDir = path.isAbsolute(config.workingDirRoot)
+      ? path.resolve(config.workingDirRoot) + path.sep
+      : config.workingDirRoot; // Keep as-is for error message
+    
+    this.logger?.info(`📁 ShellToolService sandbox: ${this.normalizedWorkingDir}`, {
+      originalWorkingDir: config.workingDirRoot,
+      resolvedWorkingDir: this.normalizedWorkingDir,
+      maxOutputBytes: config.maxOutputBytes,
+      executionTimeoutMs: config.executionTimeoutMs
+    });
+  }
+
+  /**
+   * Validates that the working directory is absolute and exists.
+   * Should be called at server startup if shell tools are enabled.
+   * @throws {ShellToolError} if path is not absolute or directory doesn't exist
+   */
+  validateWorkingDirectory(): void {
+    // First, validate that the path is absolute
+    if (!path.isAbsolute(this.config.workingDirRoot)) {
+      const error = `SHELL_SANDBOX_WORKING_DIR must be an absolute path.\n` +
+        `Got: ${this.config.workingDirRoot}\n` +
+        `\nPlease update your .env file to use an absolute path.\n` +
+        `Example: SHELL_SANDBOX_WORKING_DIR=/Users/season/Personal/wrapper-for-chatbot/tiny-chatbot/proprietary-documents`;
+      this.logger?.error(`❌ ${error}`);
+      throw new ShellToolError(error, 'config-validation');
+    }
+    
+    // Re-normalize now that we know it's absolute
+    this.normalizedWorkingDir = path.resolve(this.config.workingDirRoot) + path.sep;
+    
+    // Then validate that the directory exists
+    if (!existsSync(this.normalizedWorkingDir.slice(0, -1))) {
+      const error = `Shell sandbox directory does not exist: ${this.normalizedWorkingDir}\n` +
+        `\nPlease create the directory or update SHELL_SANDBOX_WORKING_DIR in your .env file.`;
+      this.logger?.error(`❌ ${error}`);
+      throw new ShellToolError(error, 'directory-validation');
+    }
+    
+    this.logger?.info(`✅ Shell sandbox directory validated: ${this.normalizedWorkingDir}`);
   }
 
   async executeTool(
@@ -34,7 +78,11 @@ export class ShellToolService {
   ): Promise<ShellToolExecutionResult> {
     const startTime = Date.now();
 
-    this.logger?.info('Executing shell tool', { command, args });
+    this.logger?.info(`🔧 Executing tool: ${command} ${args.join(' ')}`, { 
+      command, 
+      args,
+      workingDir: this.normalizedWorkingDir
+    });
 
     // Validate and normalize paths in arguments
     const normalizedArgs = this.validateAndNormalizePaths(command, args);
@@ -43,11 +91,23 @@ export class ShellToolService {
       const result = await this.spawnProcess(command, normalizedArgs);
       const durationMs = Date.now() - startTime;
 
-      this.logger?.info('Shell tool execution completed', {
-        command,
-        durationMs,
-        status: result.status
-      });
+      const statusEmoji = result.status === 'success' ? '✅' : '❌';
+      this.logger?.info(
+        `${statusEmoji} Tool ${command} completed: ${result.status} (${durationMs}ms, stdout: ${result.stdout?.length || 0} bytes, stderr: ${result.stderr?.length || 0} bytes)`,
+        {
+          command,
+          args: normalizedArgs,
+          durationMs,
+          status: result.status,
+          exitCode: result.exitCode,
+          stdoutLength: result.stdout?.length || 0,
+          stderrLength: result.stderr?.length || 0,
+          truncated: result.truncated,
+          // Include first 500 chars of output for debugging
+          stdoutPreview: result.stdout?.substring(0, 500),
+          stderrPreview: result.stderr?.substring(0, 500)
+        }
+      );
 
       return {
         ...result,
@@ -57,8 +117,9 @@ export class ShellToolService {
       const durationMs = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      this.logger?.error('Shell tool execution failed', {
+      this.logger?.error(`❌ Tool ${command} failed: ${errorMessage}`, {
         command,
+        args,
         durationMs,
         error: errorMessage
       });
@@ -128,7 +189,10 @@ export class ShellToolService {
     const absolutePath = path.resolve(this.config.workingDirRoot, inputPath);
 
     // Ensure path is within the allowed root directory
-    if (!absolutePath.startsWith(this.config.workingDirRoot)) {
+    // Use normalized path with trailing separator to prevent bypass attacks
+    // (e.g., /sandbox-evil would incorrectly pass a startsWith check for /sandbox)
+    const normalizedAbsolutePath = path.resolve(absolutePath) + path.sep;
+    if (!normalizedAbsolutePath.startsWith(this.normalizedWorkingDir)) {
       throw new ShellToolError(
         `Path '${inputPath}' is outside the allowed working directory`,
         'path-validation'
@@ -143,8 +207,10 @@ export class ShellToolService {
     args: string[]
   ): Promise<ShellToolExecutionResult> {
     return new Promise((resolve) => {
+      // Use the resolved absolute path without trailing separator for cwd
+      const cwd = this.normalizedWorkingDir.slice(0, -1);
       const process = spawn(command, args, {
-        cwd: this.config.workingDirRoot,
+        cwd,
         timeout: this.config.executionTimeoutMs
       });
 

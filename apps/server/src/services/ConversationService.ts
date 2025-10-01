@@ -220,7 +220,7 @@ export class ConversationService {
       // Map tool arguments to command and args
       const { command, args } = this.mapToolCallToShellCommand(toolCall);
 
-      // Execute the tool
+      // Execute the tool (detailed logging happens in ShellToolService)
       const result = await this.shellToolService.executeTool(command, args);
 
       return {

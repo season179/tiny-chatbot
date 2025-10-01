@@ -41,7 +41,17 @@ const configSchema = z.object({
         .map((command) => command.trim())
         .filter((command) => command.length > 0)
     ),
-  SHELL_SANDBOX_WORKING_DIR: z.string().default('./'),
+  SHELL_SANDBOX_WORKING_DIR: z
+    .string()
+    .default('./')
+    .refine(
+      (val) => {
+        // If sandbox is disabled, we don't need to validate the path
+        // We can't access SHELL_SANDBOX_ENABLED here, so we validate in the service
+        return true;
+      },
+      { message: 'SHELL_SANDBOX_WORKING_DIR must be an absolute path' }
+    ),
   SHELL_SANDBOX_MAX_OUTPUT_BYTES: z.coerce.number().int().positive().default(16384),
   SHELL_SANDBOX_TIMEOUT_MS: z.coerce.number().int().positive().default(5000)
 });

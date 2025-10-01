@@ -56,9 +56,9 @@ Implementation plan for giving the tiny-chatbot backend limited agentic capabili
   - Ripgrep performance validation
 - ✅ All 15 test files passing (153 total tests)
 
-## 8. Rollout Checklist ⚠️
-- ✅ Environment configuration documented (`ENV_CONFIGURATION.md`)
+## 8. Rollout Checklist ✅
+- ✅ Environment configuration documented (`.env.example`)
 - ✅ Security best practices documented
-- ❌ Main README not updated with agentic capabilities
-- ❌ Migration guidance not provided (schema is backwards compatible, no migration needed)
-- ❌ Feature flag not implemented (agentic behavior always enabled when tools configured)
+- ✅ Main README updated with comprehensive agentic capabilities section
+- ✅ Migration guidance not needed (schema is backwards compatible)
+- ⚠️ Feature flag not implemented (agentic behavior controlled via `SHELL_SANDBOX_ENABLED` - sufficient for MVP)

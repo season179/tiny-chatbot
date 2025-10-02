@@ -24,16 +24,28 @@ export class PromptService {
   /**
    * Get the system prompt for a specific tenant.
    * Falls back to the default prompt if tenant-specific prompt is not found.
+   * Injects dynamic values like current date.
    */
   getPromptForTenant(tenantId: string): string {
-    return this.prompts[tenantId] || this.prompts._default;
+    const rawPrompt = this.prompts[tenantId] || this.prompts._default;
+    return this.injectDynamicValues(rawPrompt);
   }
 
   /**
    * Get the default system prompt.
+   * Injects dynamic values like current date.
    */
   getDefaultPrompt(): string {
-    return this.prompts._default;
+    return this.injectDynamicValues(this.prompts._default);
+  }
+
+  /**
+   * Inject dynamic values into prompt templates.
+   * Replaces placeholders like {{CURRENT_DATE}} with computed values.
+   */
+  private injectDynamicValues(prompt: string): string {
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    return prompt.replace(/\{\{CURRENT_DATE\}\}/g, currentDate);
   }
 
   /**

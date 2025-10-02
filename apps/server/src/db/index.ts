@@ -82,6 +82,14 @@ export function getDatabase(): BetterSQLite3Database<typeof schema> {
   return db;
 }
 
+// For testing purposes only - provides access to raw SQLite database
+export function getRawDatabase(): Database.Database {
+  if (!sqliteDb) {
+    throw new Error('Database has not been initialized. Call initDatabase() first.');
+  }
+  return sqliteDb;
+}
+
 export function closeDatabase(): void {
   if (sqliteDb) {
     sqliteDb.close();

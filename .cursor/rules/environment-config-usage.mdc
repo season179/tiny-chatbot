@@ -1,0 +1,93 @@
+---
+description: Ensure environment variables are actually used in the application, not just parsed
+globs:
+  - "**/*.ts"
+  - "**/*.js"
+alwaysApply: false
+---
+
+# Environment Configuration Usage
+
+## Critical Rule: Environment Variables Must Be Used
+
+When adding new environment variables to the config schema, ensure they are **actually used** in the application, not just parsed and stored.
+
+### Common Mistake Pattern
+
+```typescript
+// ❌ BAD: Variable is parsed but never used
+const configSchema = z.object({
+  NEW_FEATURE_ENABLED: z.string().transform((val) => val === 'true'),
+  NEW_FEATURE_TIMEOUT: z.coerce.number().default(5000)
+});
+
+// Later in code...
+const service = new Service(HARDCODED_DEFAULT_CONFIG); // Uses hardcoded values!
+```
+
+### Correct Pattern
+
+```typescript
+// ✅ GOOD: Variable is parsed AND used
+const configSchema = z.object({
+  NEW_FEATURE_ENABLED: z.string().transform((val) => val === 'true'),
+  NEW_FEATURE_TIMEOUT: z.coerce.number().default(5000)
+});
+
+// Later in code...
+const config = getConfig();
+const service = new Service({
+  enabled: config.NEW_FEATURE_ENABLED,
+  timeout: config.NEW_FEATURE_TIMEOUT
+}); // Uses actual environment values
+```
+
+## Shell Sandbox Configuration Example
+
+The shell sandbox configuration was affected by this issue. See @SANDBOX_FIX_SUMMARY.md for details.
+
+**Fixed implementation:**
+```typescript
+// In server.ts
+const config = getConfig();
+const toolsConfig: ToolsConfig = {
+  workingDirRoot: path.resolve(config.SHELL_SANDBOX_WORKING_DIR),
+  maxOutputBytes: config.SHELL_SANDBOX_MAX_OUTPUT_BYTES,
+  executionTimeoutMs: config.SHELL_SANDBOX_TIMEOUT_MS
+};
+const shellToolService = new ShellToolService(toolsConfig, app.log);
+```
+
+## Verification Checklist
+
+When adding new environment variables:
+
+1. ✅ Add to config schema in `config.ts`
+2. ✅ Add to `.env.example` with documentation
+3. ✅ **Ensure the parsed value is passed to the service/component that needs it**
+4. ✅ Test that changing the environment variable actually changes behavior
+5. ✅ Add integration tests verifying the environment variable works
+6. ✅ Update documentation in README.md or CLAUDE.md
+
+## Path Resolution for Directory Configuration
+
+When environment variables specify directories or file paths:
+
+- **Always use `path.resolve()`** to convert relative paths to absolute paths
+- This ensures consistent path validation and prevents security issues
+- Example: `path.resolve(config.WORKING_DIR)` instead of using `config.WORKING_DIR` directly
+
+## Testing Environment Configuration
+
+Add tests that verify environment variables are respected:
+
+```typescript
+test('should use environment variable for timeout', async () => {
+  process.env.FEATURE_TIMEOUT = '3000';
+  resetConfig();
+  loadConfig();
+  
+  const service = createService();
+  // Verify service uses 3000ms timeout, not default
+});
+```

@@ -1,4 +1,4 @@
-# Shell Sandbox Environment Variables Fix
+# Shell Sandbox Security Fix & Best Practices
 
 ## Issue Description
 The shell sandbox environment variables (`SHELL_SANDBOX_WORKING_DIR`, `SHELL_SANDBOX_MAX_OUTPUT_BYTES`, `SHELL_SANDBOX_TIMEOUT_MS`) were being **parsed but never used**.
@@ -72,13 +72,6 @@ if (!normalizedAbsolutePath.startsWith(this.normalizedWorkingDir)) {
 
 This ensures `/path/to/proprietary-documents-evil/` won't pass the check for `/path/to/proprietary-documents/`.
 
-## Testing
-All 160 existing tests continue to pass. The server logs now correctly show:
-```
-ShellToolService initialized with tools: cat, ls, grep, rg, head, tail, pwd, echo, wc, which 
-(workingDir: /Users/season/Personal/wrapper-for-chatbot/tiny-chatbot/proprietary-documents)
-```
-
 ## How to Verify the Fix
 
 ### Quick Test
@@ -111,19 +104,22 @@ pnpm dev
    - ❌ Cannot access source code files outside the sandbox (e.g., `src/server.ts`)
    - The AI will use `ls` and see only files in `proprietary-documents/`
 
-## Files Modified
-1. `apps/server/src/server.ts` - Build ToolsConfig from environment variables + startup validation
-2. `apps/server/src/services/ShellToolService.ts` - Enhanced path validation security + public validation method
-3. `apps/server/vitest.setup.ts` - Disable sandbox for tests to avoid validation issues
-
-## Files Created
-1. `SANDBOX_FIX_SUMMARY.md` - This documentation
-2. `.cursor/rules/environment-config-usage.mdc` - Cursor rule to prevent similar issues
-3. `apps/server/test-sandbox.sh` - Test script to verify sandbox configuration
-
 ## Security Improvements
 - Environment variables are now properly respected for sandboxing
 - Path validation is more secure against directory traversal bypass attempts
 - Relative paths are converted to absolute paths for consistent validation
 - Added path separator to validation check to prevent directory name bypass attacks
+
+## Key Lesson: Environment Variables Must Be Used
+
+This issue is documented in cursor rules at `.cursor/rules/environment-config-usage.mdc`. When adding new environment variables:
+
+1. ✅ Add to config schema in `config.ts`
+2. ✅ Add to `.env.example` with documentation
+3. ✅ **Ensure the parsed value is passed to the service/component that needs it**
+4. ✅ Test that changing the environment variable actually changes behavior
+5. ✅ Add integration tests verifying the environment variable works
+6. ✅ Update documentation in README.md
+
+**Never parse environment variables without actually using them in the application!**
 

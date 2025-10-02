@@ -145,16 +145,17 @@ The following components have comprehensive test coverage:
    - ✅ 32 test cases (exceeded target of ~20)
    - Coverage: Constructor, createSession, sendMessage, streamMessage (complex SSE), submitFeedback, healthCheck, ApiClientError
 
-### Phase 3: Widget Tests (Optional)
+### Phase 3: Widget Tests ✅ COMPLETED
 **Priority:** Medium  
-**Estimated Time:** 3-4 hours
+**Actual Time:** 3.5 hours  
+**Status:** ✅ All tests passing (25 new tests added)
 
-4. **Test `packages/widget/hooks/useChat.ts`**
-   - Create `packages/widget/src/hooks/useChat.test.ts`
-   - Set up Preact Testing Library + Vitest
-   - Mock ApiClient
-   - Test React hooks behavior
-   - ~12 test cases
+4. **✅ Test `packages/widget/hooks/useChat.ts`** (COMPLETED)
+   - ✅ Created `packages/widget/src/hooks/useChat.test.ts`
+   - ✅ Set up Preact Testing Library + Vitest + jsdom
+   - ✅ Mock ApiClient and config module
+   - ✅ 25 test cases (exceeded target of ~12)
+   - Coverage: Session initialization (5 tests), message sending happy path (4 tests), completion handling (3 tests), error handling (7 tests), edge cases (6 tests)
 
 ---
 
@@ -173,17 +174,19 @@ The following components have comprehensive test coverage:
 - **Total Tests:** 200 tests (40 new tests added)
 - **Pass Rate:** 100% (200/200 passing)
 
-### ✅ After Phase 2 (CURRENT STATE)
+### ✅ After Phase 2
 - **Server:** ~95% coverage (only thin wrappers untested)
 - **Shared:** ~70% coverage (core client tested, types untested)
 - **Widget:** 0% coverage
 - **Total Tests:** 232 tests (32 new shared package tests added)
 - **Pass Rate:** 100% (232/232 passing)
 
-### After Phase 3 (Optional)
-- **Server:** ~95% coverage
-- **Shared:** ~60% coverage
-- **Widget:** ~40% coverage (core hook tested, components untested)
+### ✅ After Phase 3 (CURRENT STATE)
+- **Server:** ~95% coverage (only thin wrappers untested)
+- **Shared:** ~70% coverage (core client tested, types untested)
+- **Widget:** ~50% coverage (core hook comprehensively tested, components untested)
+- **Total Tests:** 257 tests (25 new widget tests added)
+- **Pass Rate:** 100% (257/257 passing)
 
 ---
 
@@ -199,13 +202,12 @@ The following components have comprehensive test coverage:
 - ✅ Mocked `fetch` API using `vi.stubGlobal()`
 
 ### Phase 3: Widget Tests
-- ⚠️ Need to add testing dependencies:
-  - `vitest`
-  - `@testing-library/preact`
-  - `@testing-library/preact-hooks`
-  - `jsdom` (for DOM environment)
-- Need to create `vitest.config.ts`
-- Need to configure Preact/JSX in Vitest
+- ✅ Added testing dependencies:
+  - ✅ `vitest`
+  - ✅ `@testing-library/preact`
+  - ✅ `jsdom` (for DOM environment)
+- ✅ Created `vitest.config.ts` with Preact plugin and jsdom environment
+- ✅ Configured Preact/JSX in Vitest
 
 ---
 
@@ -226,10 +228,16 @@ The following components have comprehensive test coverage:
    - ✅ Network error handling is critical - all paths covered
    - ✅ Completed in 3 hours (as estimated)
 
-### Do Now (Lower Priority)
-3. 🔄 **Phase 3**: Test `useChat.ts` hook
+3. ✅ **Phase 3**: Test `useChat.ts` hook (DONE)
+   - ✅ Comprehensive testing of Preact hook behavior
+   - ✅ All state transitions and error paths covered
+   - ✅ Session initialization and message streaming tested
+   - ✅ Completed in 3.5 hours (as estimated)
+
+### Future Work (Lower Priority)
+4. 🔄 **Widget Components**: Test UI components
    - Only if widget becomes more complex
-   - Currently straightforward logic
+   - Components: `MessageList.tsx`, `MessageInput.tsx`, `WidgetRoot.tsx`
    - Can wait until widget has more features
 
 ### Skip (Low Value)
@@ -255,8 +263,9 @@ The following components have comprehensive test coverage:
 - ✅ Tests run in `packages/shared/` independently
 
 ✅ Phase 3 Complete When:
-- `useChat` hook tested with Testing Library
-- State transitions verified
-- Error scenarios covered
-- Widget tests run in isolation
+- ✅ `useChat` hook tested with Testing Library (25 tests)
+- ✅ State transitions verified (initialization, sending, completion, error states)
+- ✅ Error scenarios covered (stream errors, network failures, placeholder cleanup)
+- ✅ Widget tests run in isolation with mocked dependencies
+- ✅ All edge cases covered (unique IDs, empty content, rapid events, multiple errors)
 

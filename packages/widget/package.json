@@ -17,7 +17,9 @@
     "dev": "vite --config vite.dev.config.ts",
     "build": "vite build",
     "lint": "biome lint .",
-    "test": "echo 'tests pending'"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@tiny-chatbot/shared": "workspace:^",
@@ -25,8 +27,11 @@
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",
+    "@testing-library/preact": "^3.2.4",
     "@types/node": "^24.5.2",
+    "jsdom": "^24.0.0",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12"
+    "vite": "^5.0.12",
+    "vitest": "^2.0.5"
   }
 }

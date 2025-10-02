@@ -132,16 +132,18 @@ The following components have comprehensive test coverage:
    - ✅ 16 test cases (exceeded target of ~10)
    - Coverage: Server initialization, CORS configuration, service wiring, sandbox validation, host/port config
 
-### Phase 2: Client Library Tests
+### Phase 2: Client Library Tests ✅ COMPLETED
 **Priority:** High  
-**Estimated Time:** 3-4 hours
+**Actual Time:** 3 hours  
+**Status:** ✅ All tests passing (32 new tests added)
 
-3. **Test `packages/shared/client/api-client.ts`**
-   - Create `packages/shared/src/client/api-client.test.ts`
-   - Set up test infrastructure in `packages/shared/` (Vitest)
-   - Mock fetch API for all network calls
-   - Test SSE streaming parsing
-   - ~20 test cases
+3. **✅ Test `packages/shared/client/api-client.ts`** (COMPLETED)
+   - ✅ Created `packages/shared/src/client/api-client.test.ts`
+   - ✅ Set up test infrastructure in `packages/shared/` (Vitest)
+   - ✅ Mock fetch API for all network calls
+   - ✅ Test SSE streaming parsing
+   - ✅ 32 test cases (exceeded target of ~20)
+   - Coverage: Constructor, createSession, sendMessage, streamMessage (complex SSE), submitFeedback, healthCheck, ApiClientError
 
 ### Phase 3: Widget Tests (Optional)
 **Priority:** Medium  
@@ -164,17 +166,19 @@ The following components have comprehensive test coverage:
 - **Widget:** 0% coverage (no tests)
 - **Total Tests:** 160 tests
 
-### ✅ After Phase 1 (CURRENT STATE)
+### ✅ After Phase 1
 - **Server:** ~95% coverage (only thin wrappers untested)
 - **Shared:** 0% coverage
 - **Widget:** 0% coverage
 - **Total Tests:** 200 tests (40 new tests added)
 - **Pass Rate:** 100% (200/200 passing)
 
-### After Phase 2
-- **Server:** ~95% coverage
-- **Shared:** ~60% coverage (core client tested, types untested)
+### ✅ After Phase 2 (CURRENT STATE)
+- **Server:** ~95% coverage (only thin wrappers untested)
+- **Shared:** ~70% coverage (core client tested, types untested)
 - **Widget:** 0% coverage
+- **Total Tests:** 232 tests (32 new shared package tests added)
+- **Pass Rate:** 100% (232/232 passing)
 
 ### After Phase 3 (Optional)
 - **Server:** ~95% coverage
@@ -190,9 +194,9 @@ The following components have comprehensive test coverage:
 - No additional setup needed
 
 ### Phase 2: Shared Package Tests
-- ⚠️ Need to add Vitest to `packages/shared/package.json`
-- Need to create `vitest.config.ts`
-- Need to mock `fetch` API (use `vi.stubGlobal()` or `msw`)
+- ✅ Added Vitest to `packages/shared/package.json`
+- ✅ Created `vitest.config.ts`
+- ✅ Mocked `fetch` API using `vi.stubGlobal()`
 
 ### Phase 3: Widget Tests
 - ⚠️ Need to add testing dependencies:
@@ -214,14 +218,15 @@ The following components have comprehensive test coverage:
    - ✅ Completed in 4 hours (as estimated)
    - ✅ Added `getRawDatabase()` export for testing purposes
 
-### Do Now (High Value)
+### ✅ Completed
 
-2. ✅ **Phase 2**: Test `api-client.ts`
-   - Used by widget and potentially other consumers
-   - Complex streaming logic
-   - Network error handling is critical
+2. ✅ **Phase 2**: Test `api-client.ts` (DONE)
+   - ✅ Used by widget and potentially other consumers
+   - ✅ Complex streaming logic tested thoroughly
+   - ✅ Network error handling is critical - all paths covered
+   - ✅ Completed in 3 hours (as estimated)
 
-### Do Later (Lower Priority)
+### Do Now (Lower Priority)
 3. 🔄 **Phase 3**: Test `useChat.ts` hook
    - Only if widget becomes more complex
    - Currently straightforward logic
@@ -244,10 +249,10 @@ The following components have comprehensive test coverage:
 - ✅ 200 tests passing (100% pass rate)
 
 ✅ Phase 2 Complete When:
-- All API client methods tested with mocked fetch
-- SSE streaming logic verified
-- Error handling edge cases covered
-- Tests run in `packages/shared/` independently
+- ✅ All API client methods tested with mocked fetch (32 tests)
+- ✅ SSE streaming logic verified (buffering, incomplete lines, early termination)
+- ✅ Error handling edge cases covered (network errors, 4xx/5xx, null body, reader cleanup)
+- ✅ Tests run in `packages/shared/` independently
 
 ✅ Phase 3 Complete When:
 - `useChat` hook tested with Testing Library
